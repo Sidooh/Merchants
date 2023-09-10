@@ -1,4 +1,4 @@
-module Merchants
+module merchants.sidooh
 
 go 1.21
 
