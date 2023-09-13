@@ -1,0 +1,71 @@
+package merchant
+
+import (
+	"fmt"
+	"merchants.sidooh/api/presenter"
+	"merchants.sidooh/pkg/datastore"
+	"merchants.sidooh/pkg/entities"
+)
+
+// Repository interface allows us to access the CRUD Operations here.
+type Repository interface {
+	CreateMerchant(merchant *entities.Merchant) (*entities.Merchant, error)
+	ReadMerchants() (*[]presenter.Merchant, error)
+	ReadMerchant(id uint) (*presenter.Merchant, error)
+	UpdateMerchant(merchant *entities.Merchant) (*presenter.Merchant, error)
+}
+type repository struct {
+}
+
+func (r *repository) CreateMerchant(merchant *entities.Merchant) (*entities.Merchant, error) {
+	result := datastore.DB.Create(&merchant)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return merchant, nil
+}
+
+func (r *repository) ReadMerchants() (*[]presenter.Merchant, error) {
+	var merchants []presenter.Merchant
+	result := datastore.DB.Find(&merchants)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return &merchants, nil
+}
+
+func (r *repository) ReadMerchant(id uint) (*presenter.Merchant, error) {
+	var merchant presenter.Merchant
+	result := datastore.DB.First(&merchant, id)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return &merchant, nil
+}
+
+func (r *repository) ReadMerchantByEmailOrPhone(email string, phone string) (*presenter.Merchant, error) {
+	var merchant presenter.Merchant
+	result := datastore.DB.Where("email", email).Or("phone LIKE ?", fmt.Sprintf("%%%s%%", phone)).First(&merchant)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return &merchant, nil
+}
+
+func (r *repository) UpdateMerchant(merchant *entities.Merchant) (*presenter.Merchant, error) {
+	result := datastore.DB.Updates(merchant)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return r.ReadMerchant(merchant.Id)
+}
+
+// NewRepo is the single instance repo that is being created.
+func NewRepo() Repository {
+	return &repository{}
+}
