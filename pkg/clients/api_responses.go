@@ -1,17 +1,13 @@
 package clients
 
-import "time"
+import (
+	"time"
+)
 
 type Account struct {
 	Id     int    `json:"id"`
 	Phone  string `json:"phone"`
 	Active bool   `json:"active"`
-}
-
-type Payment struct {
-	Id     int    `json:"id"`
-	Amount string `json:"amount"`
-	Status string `json:"status"`
 }
 
 type FloatAccount struct {

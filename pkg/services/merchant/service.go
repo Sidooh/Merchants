@@ -1,8 +1,8 @@
 package merchant
 
 import (
-	"github.com/gofiber/fiber/v2"
 	"merchants.sidooh/api/presenter"
+	"merchants.sidooh/pkg/clients"
 	"merchants.sidooh/pkg/entities"
 )
 
@@ -15,8 +15,8 @@ type Service interface {
 }
 
 type service struct {
-	apiClient  *fiber.Client
-	repository Repository
+	paymentsApi *clients.ApiClient
+	repository  Repository
 }
 
 func (s *service) FetchMerchants() (*[]presenter.Merchant, error) {
@@ -31,8 +31,22 @@ func (s *service) GetMerchantByAccount(accountId uint) (*presenter.Merchant, err
 	return s.repository.ReadMerchantByAccount(accountId)
 }
 
-func (s *service) CreateMerchant(merchant *entities.Merchant) (*entities.Merchant, error) {
-	return s.repository.CreateMerchant(merchant)
+func (s *service) CreateMerchant(data *entities.Merchant) (merchant *entities.Merchant, err error) {
+	merchant, err = s.repository.CreateMerchant(data)
+
+	//floatAccount, err := s.paymentsApi.CreateFloatAccount(int(newMerchant.Id), int(newMerchant.AccountId))
+	//if err != nil {
+	//	return nil, pkg.ErrServerError
+	//}
+	//
+	//id := uint(floatAccount.Id)
+	//newMerchant.FloatAccountId = &id
+	//merchant, err = s.repository.UpdateMerchant(newMerchant)
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	return
 }
 
 func (s *service) UpdateMerchant(merchant *entities.Merchant) (*presenter.Merchant, error) {
@@ -40,5 +54,5 @@ func (s *service) UpdateMerchant(merchant *entities.Merchant) (*presenter.Mercha
 }
 
 func NewService(r Repository) Service {
-	return &service{repository: r}
+	return &service{repository: r, paymentsApi: clients.GetPaymentClient()}
 }

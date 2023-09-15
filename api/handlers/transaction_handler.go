@@ -12,9 +12,9 @@ import (
 )
 
 type FloatPurchaseRequest struct {
-	Agent  int `json:"agent" validate:"required,numeric"`
-	Store  int `json:"store" validate:"required,numeric"`
-	Amount int `json:"amount" validate:"required,numeric"`
+	Agent  string `json:"agent" validate:"required,numeric"`
+	Store  string `json:"store" validate:"required,numeric"`
+	Amount int    `json:"amount" validate:"required,numeric"`
 }
 
 func GetTransactions(service transaction.Service) fiber.Handler {
@@ -77,13 +77,13 @@ func BuyFloat(service transaction.Service) fiber.Handler {
 
 		dest := fmt.Sprintf("%v-%v", request.Agent, request.Store)
 
-		fetched, err := service.CreateTransaction(&entities.Transaction{
+		fetched, err := service.PurchaseFloat(&entities.Transaction{
 			Amount:      float32(request.Amount),
 			Description: "Float Purchase",
 			Destination: &dest,
 			MerchantId:  uint(id),
 			Product:     "FLOAT",
-		})
+		}, request.Agent, request.Store)
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)
 		}

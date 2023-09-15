@@ -17,8 +17,10 @@ import (
 	"merchants.sidooh/api/routes"
 	"merchants.sidooh/pkg/clients"
 	"merchants.sidooh/pkg/logger"
+	"merchants.sidooh/pkg/services/ipn"
 	"merchants.sidooh/pkg/services/location"
 	"merchants.sidooh/pkg/services/merchant"
+	"merchants.sidooh/pkg/services/payment"
 	"merchants.sidooh/pkg/services/transaction"
 	"merchants.sidooh/utils"
 	"time"
@@ -77,8 +79,15 @@ func setHandlers(app *fiber.App) {
 	locationRep := location.NewRepo()
 	locationSrv := location.NewService(locationRep)
 
+	paymentRep := payment.NewRepo()
+	//paymentSrv := payment.NewService(paymentRep)
+
 	transactionRep := transaction.NewRepo()
-	transactionSrv := transaction.NewService(transactionRep)
+	transactionSrv := transaction.NewService(transactionRep, merchantRep, paymentRep)
+
+	ipnSrv := ipn.NewService(paymentRep)
+
+	routes.IpnRouter(v1, ipnSrv)
 
 	app.Use(jwt.New(jwt.Config{
 		Secret: viper.GetString("JWT_KEY"),

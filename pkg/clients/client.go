@@ -9,6 +9,7 @@ import (
 	"merchants.sidooh/pkg/cache"
 	"merchants.sidooh/pkg/logger"
 	"net/http"
+	"net/http/httputil"
 	"strings"
 	"time"
 )
@@ -40,7 +41,7 @@ func Init() {
 }
 
 func New(baseUrl string) *ApiClient {
-	logger.ClientLog.Info("New client: ", baseUrl)
+	logger.ClientLog.Debug("New client", "url", baseUrl)
 
 	return &ApiClient{
 		client:  &http.Client{Timeout: 10 * time.Second},
@@ -64,7 +65,8 @@ func (api *ApiClient) getUrl(endpoint string) string {
 
 func (api *ApiClient) Send(data interface{}) error {
 	//TODO: Can we encode the data for security purposes and decode when necessary? Same to response logging...
-	logger.ClientLog.Info("API_REQ: ", api.request)
+	dump, err := httputil.DumpRequest(api.request, true)
+	logger.ClientLog.Info("API_REQ", "err", err, "req", string(dump))
 	start := time.Now()
 	response, err := api.client.Do(api.request)
 	if err != nil {
@@ -73,13 +75,14 @@ func (api *ApiClient) Send(data interface{}) error {
 	}
 	// Close the connection to reuse it
 	defer response.Body.Close()
-	logger.ClientLog.Info("API_RES - raw: ", response, time.Since(start))
+	dump, err = httputil.DumpResponse(response, true)
+	logger.ClientLog.Info("API_RES - raw", "latency", time.Since(start), "err", err, "res", string(dump))
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		logger.ClientLog.Error("Couldn't parse response body: ", err)
+		logger.ClientLog.Error("error parsing response body", "err", err)
 	}
-	logger.ClientLog.Info("API_RES - body: ", string(body))
+	logger.ClientLog.Info("API_RES", "body", string(body))
 
 	//TODO: Perform error handling in a better way
 	if response.StatusCode != 200 && response.StatusCode != 201 && response.StatusCode != 401 &&
@@ -91,7 +94,7 @@ func (api *ApiClient) Send(data interface{}) error {
 			if len(errorMessage["errors"]) == 0 {
 				var errorMessage map[string]string
 				err = json.Unmarshal(body, &errorMessage)
-				logger.ClientLog.Info("API_ERR - body: ", errorMessage)
+				logger.ClientLog.Info("API_ERR", "err", errorMessage)
 
 				return errors.New(errorMessage["message"])
 			}
@@ -113,7 +116,7 @@ func (api *ApiClient) Send(data interface{}) error {
 
 	err = json.Unmarshal(body, data)
 	if err != nil {
-		logger.ClientLog.Info("Failed to unmarshal body: ", err)
+		logger.ClientLog.Info("Failed to unmarshal body", "err", err)
 	}
 
 	return nil
