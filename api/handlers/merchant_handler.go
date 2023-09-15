@@ -41,6 +41,23 @@ func GetMerchant(service merchant.Service) fiber.Handler {
 	}
 }
 
+func GetMerchantByAccount(service merchant.Service) fiber.Handler {
+	return func(ctx *fiber.Ctx) error {
+		id, err := ctx.ParamsInt("accountId")
+		if err != nil {
+			ctx.Status(http.StatusBadRequest)
+			return ctx.JSON(utils.ValidationErrorResponse(errors.New("invalid account id parameter")))
+		}
+
+		fetched, err := service.GetMerchantByAccount(uint(id))
+		if err != nil {
+			return utils.HandleErrorResponse(ctx, err)
+		}
+
+		return utils.HandleSuccessResponse(ctx, fetched)
+	}
+}
+
 func GetMerchants(service merchant.Service) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		fetched, err := service.FetchMerchants()

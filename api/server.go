@@ -120,9 +120,8 @@ func Server() *fiber.App {
 	setHealthCheckRoutes(app)
 	setHandlers(app)
 
-	//for _, route := range app.GetRoutes() {
-	//	fmt.Println(route.Name, route.Method, route.Path, route.Params)
-	//}
+	//data, _ := json.MarshalIndent(app.GetRoutes(true), "", "  ")
+	//fmt.Print(string(data))
 
 	return app
 }
