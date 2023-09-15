@@ -10,7 +10,7 @@ type Merchant struct {
 	BusinessName *string `json:"business_name" gorm:"size:128"`
 	Code         *string `json:"code" gorm:"unique; size:8"`
 
-	AccountId      uint    `json:"account_id" gorm:"uniqueIndex"`
+	AccountId      uint    `json:"account_id" gorm:"not null;uniqueIndex"`
 	FloatAccountId *uint   `json:"-" gorm:"uniqueIndex"`
 	LocationId     *uint   `json:"-"`
 	Landmark       *string `json:"-" gorm:"size:128"`

@@ -19,6 +19,7 @@ import (
 	"merchants.sidooh/pkg/logger"
 	"merchants.sidooh/pkg/services/location"
 	"merchants.sidooh/pkg/services/merchant"
+	"merchants.sidooh/pkg/services/transaction"
 	"merchants.sidooh/utils"
 	"time"
 )
@@ -76,6 +77,9 @@ func setHandlers(app *fiber.App) {
 	locationRep := location.NewRepo()
 	locationSrv := location.NewService(locationRep)
 
+	transactionRep := transaction.NewRepo()
+	transactionSrv := transaction.NewService(transactionRep)
+
 	app.Use(jwt.New(jwt.Config{
 		Secret: viper.GetString("JWT_KEY"),
 		Expiry: time.Duration(15) * time.Minute,
@@ -83,6 +87,7 @@ func setHandlers(app *fiber.App) {
 
 	routes.MerchantRouter(v1, merchantSrv)
 	routes.LocationRouter(v1, locationSrv)
+	routes.TransactionRouter(v1, transactionSrv)
 }
 
 func Server() *fiber.App {
