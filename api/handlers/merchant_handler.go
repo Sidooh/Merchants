@@ -116,7 +116,7 @@ func UpdateMerchantKYB(service merchant.Service) fiber.Handler {
 			data.Landmark = &request.Landmark
 		}
 
-		fetched, err := service.UpdateMerchant(data)
+		fetched, err := service.UpdateMerchantKYB(data)
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)
 		}

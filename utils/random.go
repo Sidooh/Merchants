@@ -6,14 +6,9 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
-	"time"
 )
 
 const alphabet = "abcdefghijklmnopqrstuvwxyz"
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
 
 // RandomBool generates a random boolean
 func RandomBool() bool {

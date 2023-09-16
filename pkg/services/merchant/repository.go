@@ -12,6 +12,7 @@ type Repository interface {
 	ReadMerchants() (*[]presenter.Merchant, error)
 	ReadMerchant(id uint) (*presenter.Merchant, error)
 	ReadMerchantByAccount(accountId uint) (*presenter.Merchant, error)
+	ReadMerchantByCode(code uint) (*presenter.Merchant, error)
 	UpdateMerchant(merchant *entities.Merchant) (*presenter.Merchant, error)
 }
 type repository struct {
@@ -26,28 +27,23 @@ func (r *repository) CreateMerchant(merchant *entities.Merchant) (*entities.Merc
 	return merchant, nil
 }
 
-func (r *repository) ReadMerchants() (*[]presenter.Merchant, error) {
-	var merchants []presenter.Merchant
-	result := datastore.DB.Find(&merchants)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-
-	return &merchants, nil
+func (r *repository) ReadMerchants() (merchants *[]presenter.Merchant, err error) {
+	err = datastore.DB.Find(&merchants).Error
+	return
 }
 
-func (r *repository) ReadMerchant(id uint) (*presenter.Merchant, error) {
-	var merchant presenter.Merchant
-	result := datastore.DB.First(&merchant, id)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-
-	return &merchant, nil
+func (r *repository) ReadMerchant(id uint) (merchant *presenter.Merchant, err error) {
+	err = datastore.DB.First(&merchant, id).Error
+	return
 }
 
 func (r *repository) ReadMerchantByAccount(accountId uint) (merchant *presenter.Merchant, err error) {
 	err = datastore.DB.Where("account_id", accountId).First(&merchant).Error
+	return
+}
+
+func (r *repository) ReadMerchantByCode(code uint) (merchant *presenter.Merchant, err error) {
+	err = datastore.DB.Where("code", code).First(&merchant).Error
 	return
 }
 

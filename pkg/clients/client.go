@@ -111,7 +111,7 @@ func (api *ApiClient) Send(data interface{}) error {
 
 	//TODO: Deal with 401
 	if response.StatusCode == 401 {
-		panic("Failed to authenticate.")
+		logger.ClientLog.Error("Failed to authenticate.")
 	}
 
 	err = json.Unmarshal(body, data)

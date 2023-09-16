@@ -2,8 +2,10 @@ package merchant
 
 import (
 	"merchants.sidooh/api/presenter"
+	"merchants.sidooh/pkg"
 	"merchants.sidooh/pkg/clients"
 	"merchants.sidooh/pkg/entities"
+	"merchants.sidooh/utils"
 	"strconv"
 )
 
@@ -12,7 +14,7 @@ type Service interface {
 	GetMerchant(id uint) (*presenter.Merchant, error)
 	GetMerchantByAccount(accountId uint) (*presenter.Merchant, error)
 	CreateMerchant(merchant *entities.Merchant) (*entities.Merchant, error)
-	UpdateMerchant(merchant *entities.Merchant) (*presenter.Merchant, error)
+	UpdateMerchantKYB(merchant *entities.Merchant) (*presenter.Merchant, error)
 }
 
 type service struct {
@@ -44,24 +46,28 @@ func (s *service) CreateMerchant(data *entities.Merchant) (merchant *entities.Me
 
 	go s.notifyApi.SendSMS("DEFAULT", account.Phone, "KYC details created")
 
-	// TODO: Generate code and assign float account
-	//floatAccount, err := s.paymentsApi.CreateFloatAccount(int(merchant.Id), int(merchant.AccountId))
-	//if err != nil {
-	//	return nil, pkg.ErrServerError
-	//}
-	//
-	//id := uint(floatAccount.Id)
-	//merchant.FloatAccountId = &id
-	//merchant, err = s.repository.UpdateMerchant(merchant)
-	//if err != nil {
-	//	return nil, err
-	//}
-
 	return
 }
 
-func (s *service) UpdateMerchant(data *entities.Merchant) (merchant *presenter.Merchant, err error) {
+func (s *service) UpdateMerchantKYB(data *entities.Merchant) (merchant *presenter.Merchant, err error) {
 	merchant, err = s.repository.UpdateMerchant(data)
+
+	// TODO: Generate code and assign float account
+	// TODO: Fix this to ensure uniqueness - get all codes and generate while comparing... or generate and check loop
+	code := uint(utils.RandomIntBetween(10000, 99999))
+	data.Code = &code
+
+	floatAccount, err := s.paymentsApi.CreateFloatAccount(int(merchant.Id), int(merchant.AccountId))
+	if err != nil {
+		return nil, pkg.ErrServerError
+	}
+	id := uint(floatAccount.Id)
+	data.FloatAccountId = &id
+
+	merchant, err = s.repository.UpdateMerchant(data)
+	if err != nil {
+		return nil, err
+	}
 
 	account, err := s.accountApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
 	if err != nil {
