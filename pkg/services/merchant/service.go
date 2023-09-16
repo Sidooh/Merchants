@@ -34,14 +34,15 @@ func (s *service) GetMerchantByAccount(accountId uint) (*presenter.Merchant, err
 func (s *service) CreateMerchant(data *entities.Merchant) (merchant *entities.Merchant, err error) {
 	merchant, err = s.repository.CreateMerchant(data)
 
-	//floatAccount, err := s.paymentsApi.CreateFloatAccount(int(newMerchant.Id), int(newMerchant.AccountId))
+	// TODO: Generate code and assign float account
+	//floatAccount, err := s.paymentsApi.CreateFloatAccount(int(merchant.Id), int(merchant.AccountId))
 	//if err != nil {
 	//	return nil, pkg.ErrServerError
 	//}
 	//
 	//id := uint(floatAccount.Id)
-	//newMerchant.FloatAccountId = &id
-	//merchant, err = s.repository.UpdateMerchant(newMerchant)
+	//merchant.FloatAccountId = &id
+	//merchant, err = s.repository.UpdateMerchant(merchant)
 	//if err != nil {
 	//	return nil, err
 	//}

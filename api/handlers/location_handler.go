@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"merchants.sidooh/pkg/services/location"
 	"merchants.sidooh/utils"
@@ -56,8 +55,6 @@ func GetWards(service location.Service) fiber.Handler {
 
 func GetLandmarks(service location.Service) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		fmt.Println(ctx.AllParams())
-
 		ward, err := ctx.ParamsInt("ward")
 		if err != nil {
 			ctx.Status(http.StatusBadRequest)
