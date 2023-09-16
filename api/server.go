@@ -85,7 +85,7 @@ func setHandlers(app *fiber.App) {
 	transactionRep := transaction.NewRepo()
 	transactionSrv := transaction.NewService(transactionRep, merchantRep, paymentRep)
 
-	ipnSrv := ipn.NewService(paymentRep)
+	ipnSrv := ipn.NewService(paymentRep, transactionRep, merchantRep)
 
 	routes.IpnRouter(v1, ipnSrv)
 
