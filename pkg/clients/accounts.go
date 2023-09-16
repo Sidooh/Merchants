@@ -63,3 +63,14 @@ func (api *ApiClient) GetOrCreateAccount(phone string) (*Account, error) {
 
 	return account, nil
 }
+
+func (api *ApiClient) GetAccountById(id string) (*Account, error) {
+	var apiResponse = new(AccountApiResponse)
+
+	err := api.NewRequest(http.MethodGet, "/accounts/"+id, nil).Send(apiResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return apiResponse.Data, nil
+}

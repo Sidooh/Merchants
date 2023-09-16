@@ -4,6 +4,7 @@ import (
 	"merchants.sidooh/api/presenter"
 	"merchants.sidooh/pkg/clients"
 	"merchants.sidooh/pkg/entities"
+	"strconv"
 )
 
 type Service interface {
@@ -16,6 +17,8 @@ type Service interface {
 
 type service struct {
 	paymentsApi *clients.ApiClient
+	notifyApi   *clients.ApiClient
+	accountApi  *clients.ApiClient
 	repository  Repository
 }
 
@@ -34,6 +37,13 @@ func (s *service) GetMerchantByAccount(accountId uint) (*presenter.Merchant, err
 func (s *service) CreateMerchant(data *entities.Merchant) (merchant *entities.Merchant, err error) {
 	merchant, err = s.repository.CreateMerchant(data)
 
+	account, err := s.accountApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
+	if err != nil {
+		return nil, err
+	}
+
+	go s.notifyApi.SendSMS("DEFAULT", account.Phone, "KYC details created")
+
 	// TODO: Generate code and assign float account
 	//floatAccount, err := s.paymentsApi.CreateFloatAccount(int(merchant.Id), int(merchant.AccountId))
 	//if err != nil {
@@ -50,10 +60,19 @@ func (s *service) CreateMerchant(data *entities.Merchant) (merchant *entities.Me
 	return
 }
 
-func (s *service) UpdateMerchant(merchant *entities.Merchant) (*presenter.Merchant, error) {
-	return s.repository.UpdateMerchant(merchant)
+func (s *service) UpdateMerchant(data *entities.Merchant) (merchant *presenter.Merchant, err error) {
+	merchant, err = s.repository.UpdateMerchant(data)
+
+	account, err := s.accountApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
+	if err != nil {
+		return nil, err
+	}
+
+	go s.notifyApi.SendSMS("DEFAULT", account.Phone, "KYB details updated")
+
+	return
 }
 
 func NewService(r Repository) Service {
-	return &service{repository: r, paymentsApi: clients.GetPaymentClient()}
+	return &service{repository: r, paymentsApi: clients.GetPaymentClient(), notifyApi: clients.GetNotifyClient(), accountApi: clients.GetAccountClient()}
 }
