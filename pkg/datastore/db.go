@@ -65,6 +65,7 @@ func Init() {
 			&entities.Location{},
 			&entities.Transaction{},
 			&entities.Payment{},
+			&entities.MpesaAgentStoreAccount{},
 		)
 		if err != nil {
 			logrus.Error(err)

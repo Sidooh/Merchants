@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/gofiber/fiber/v2"
 	"merchants.sidooh/api/middleware"
+	"merchants.sidooh/pkg/logger"
 	"merchants.sidooh/pkg/services/ipn"
 	"merchants.sidooh/utils"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 func HandlePaymentIpn(service ipn.Service) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
+		logger.ClientLog.Info(ctx.String(), "data", string(ctx.Body()), "headers", ctx.GetReqHeaders())
 		var request utils.Payment
 		if err := middleware.BindAndValidateRequest(ctx, &request); err != nil {
 			return ctx.Status(http.StatusUnprocessableEntity).JSON(err)

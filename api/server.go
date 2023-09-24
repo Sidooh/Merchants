@@ -20,6 +20,7 @@ import (
 	"merchants.sidooh/pkg/services/ipn"
 	"merchants.sidooh/pkg/services/location"
 	"merchants.sidooh/pkg/services/merchant"
+	"merchants.sidooh/pkg/services/mpesa_store"
 	"merchants.sidooh/pkg/services/payment"
 	"merchants.sidooh/pkg/services/transaction"
 	"merchants.sidooh/utils"
@@ -85,7 +86,10 @@ func setHandlers(app *fiber.App) {
 	transactionRep := transaction.NewRepo()
 	transactionSrv := transaction.NewService(transactionRep, merchantRep, paymentRep)
 
-	ipnSrv := ipn.NewService(paymentRep, transactionRep, merchantRep)
+	mpesaStoreRep := mpesa_store.NewRepo()
+	mpesaStoreSrv := mpesa_store.NewService(mpesaStoreRep)
+
+	ipnSrv := ipn.NewService(paymentRep, transactionRep, merchantRep, mpesaStoreRep)
 
 	routes.IpnRouter(v1, ipnSrv)
 
@@ -97,6 +101,7 @@ func setHandlers(app *fiber.App) {
 	routes.MerchantRouter(v1, merchantSrv)
 	routes.LocationRouter(v1, locationSrv)
 	routes.TransactionRouter(v1, transactionSrv)
+	routes.MpesaStoreRouter(v1, mpesaStoreSrv)
 }
 
 func Server() *fiber.App {

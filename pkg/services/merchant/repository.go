@@ -13,6 +13,7 @@ type Repository interface {
 	ReadMerchant(id uint) (*presenter.Merchant, error)
 	ReadMerchantByAccount(accountId uint) (*presenter.Merchant, error)
 	ReadMerchantByCode(code uint) (*presenter.Merchant, error)
+	ReadMerchantByIdNumber(idNumber string) (*presenter.Merchant, error)
 	UpdateMerchant(merchant *entities.Merchant) (*presenter.Merchant, error)
 }
 type repository struct {
@@ -44,6 +45,11 @@ func (r *repository) ReadMerchantByAccount(accountId uint) (merchant *presenter.
 
 func (r *repository) ReadMerchantByCode(code uint) (merchant *presenter.Merchant, err error) {
 	err = datastore.DB.Where("code", code).First(&merchant).Error
+	return
+}
+
+func (r *repository) ReadMerchantByIdNumber(idNumber string) (merchant *presenter.Merchant, err error) {
+	err = datastore.DB.Where("id_number", idNumber).First(&merchant).Error
 	return
 }
 

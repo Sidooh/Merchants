@@ -13,6 +13,7 @@ type Service interface {
 	FetchMerchants() (*[]presenter.Merchant, error)
 	GetMerchant(id uint) (*presenter.Merchant, error)
 	GetMerchantByAccount(accountId uint) (*presenter.Merchant, error)
+	GetMerchantByIdNumber(idNumber string) (*presenter.Merchant, error)
 	CreateMerchant(merchant *entities.Merchant) (*entities.Merchant, error)
 	UpdateMerchantKYB(merchant *entities.Merchant) (*presenter.Merchant, error)
 }
@@ -36,6 +37,10 @@ func (s *service) GetMerchantByAccount(accountId uint) (*presenter.Merchant, err
 	return s.repository.ReadMerchantByAccount(accountId)
 }
 
+func (s *service) GetMerchantByIdNumber(idNumber string) (*presenter.Merchant, error) {
+	return s.repository.ReadMerchantByIdNumber(idNumber)
+}
+
 func (s *service) CreateMerchant(data *entities.Merchant) (merchant *entities.Merchant, err error) {
 	merchant, err = s.repository.CreateMerchant(data)
 
@@ -51,6 +56,9 @@ func (s *service) CreateMerchant(data *entities.Merchant) (merchant *entities.Me
 
 func (s *service) UpdateMerchantKYB(data *entities.Merchant) (merchant *presenter.Merchant, err error) {
 	merchant, err = s.repository.UpdateMerchant(data)
+	if err != nil {
+		return nil, pkg.ErrServerError
+	}
 
 	// TODO: Generate code and assign float account
 	// TODO: Fix this to ensure uniqueness - get all codes and generate while comparing... or generate and check loop
