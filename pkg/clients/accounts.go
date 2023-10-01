@@ -24,6 +24,11 @@ type AccountApiResponse struct {
 	Data *Account `json:"data"`
 }
 
+type AccountsApiResponse struct {
+	ApiResponse
+	Data []Account `json:"data"`
+}
+
 func (api *ApiClient) CreateAccount(phone string) (*Account, error) {
 	var apiResponse = new(AccountApiResponse)
 
@@ -68,6 +73,18 @@ func (api *ApiClient) GetAccountById(id string) (*Account, error) {
 	var apiResponse = new(AccountApiResponse)
 
 	err := api.NewRequest(http.MethodGet, "/accounts/"+id, nil).Send(apiResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return apiResponse.Data, nil
+}
+
+func (api *ApiClient) GetInviters(accountId string) ([]Account, error) {
+	var apiResponse = new(AccountsApiResponse)
+
+	//TODO: Cache this
+	err := api.NewRequest(http.MethodGet, "/accounts/"+accountId+"/accounts?level_limit=3", nil).Send(apiResponse)
 	if err != nil {
 		return nil, err
 	}

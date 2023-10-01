@@ -7,7 +7,8 @@ import (
 
 type Service interface {
 	FetchAccountsByMerchant(merchantId uint) (*[]presenter.EarningAccount, error)
-	CreateAccount(store *entities.EarningAccount) (*entities.EarningAccount, error)
+	CreateAccount(data *entities.EarningAccount) (*entities.EarningAccount, error)
+	UpdateAccount(data *entities.EarningAccount) (*entities.EarningAccount, error)
 }
 
 type service struct {
@@ -18,8 +19,12 @@ func (s *service) FetchAccountsByMerchant(merchantId uint) (*[]presenter.Earning
 	return s.repository.ReadAccountsByMerchant(merchantId)
 }
 
-func (s *service) CreateAccount(store *entities.EarningAccount) (*entities.EarningAccount, error) {
-	return s.repository.CreateAccount(store)
+func (s *service) CreateAccount(data *entities.EarningAccount) (*entities.EarningAccount, error) {
+	return s.repository.CreateAccount(data)
+}
+
+func (s *service) UpdateAccount(data *entities.EarningAccount) (*entities.EarningAccount, error) {
+	return s.repository.UpdateAccount(data)
 }
 
 func NewService(r Repository) Service {

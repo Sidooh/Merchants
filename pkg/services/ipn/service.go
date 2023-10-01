@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"merchants.sidooh/pkg/clients"
 	"merchants.sidooh/pkg/entities"
+	"merchants.sidooh/pkg/services/earning"
+	"merchants.sidooh/pkg/services/earning_account"
 	"merchants.sidooh/pkg/services/merchant"
 	"merchants.sidooh/pkg/services/mpesa_store"
 	"merchants.sidooh/pkg/services/payment"
@@ -18,12 +20,14 @@ type Service interface {
 }
 
 type service struct {
-	notifyApi             *clients.ApiClient
-	accountApi            *clients.ApiClient
-	paymentRepository     payment.Repository
-	transactionRepository transaction.Repository
-	merchantRepository    merchant.Repository
-	mpesaStoreRepository  mpesa_store.Repository
+	notifyApi                *clients.ApiClient
+	accountApi               *clients.ApiClient
+	paymentRepository        payment.Repository
+	transactionRepository    transaction.Repository
+	merchantRepository       merchant.Repository
+	mpesaStoreRepository     mpesa_store.Repository
+	earningAccountRepository earning_account.Repository
+	earningRepository        earning.Repository
 }
 
 func (s *service) HandlePaymentIpn(data *utils.Payment) error {
@@ -43,6 +47,64 @@ func (s *service) HandlePaymentIpn(data *utils.Payment) error {
 		ModelID: entities.ModelID{tx.Id},
 		Status:  payment.Status,
 	})
+
+	// Compute cashback and commissions
+	// Compute cashback
+	s.earningRepository.CreateEarning(&entities.Earning{
+		Amount:        3,
+		Type:          "SELF",
+		TransactionId: tx.Id,
+		MerchantId:    mt.Id,
+	})
+
+	andType, err := s.earningAccountRepository.ReadAccountByMerchantAndType(mt.Id, "CASHBACK")
+	if err == nil {
+		andType.Amount += 3
+		s.earningAccountRepository.UpdateAccount(andType)
+	} else {
+		_, err = s.earningAccountRepository.CreateAccount(&entities.EarningAccount{
+			Type:       "CASHBACK",
+			Amount:     3,
+			MerchantId: mt.Id,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	// Compute commissions
+	inviters, err := s.accountApi.GetInviters(strconv.Itoa(int(mt.AccountId)))
+	if err != nil {
+		return err
+	}
+
+	if len(inviters) > 1 {
+		for _, inviter := range inviters[1:] {
+			merch, _ := s.merchantRepository.ReadMerchantByAccount(uint(inviter.Id))
+
+			s.earningRepository.CreateEarning(&entities.Earning{
+				Amount:        3,
+				Type:          "INVITE",
+				TransactionId: tx.Id,
+				MerchantId:    merch.Id,
+			})
+
+			andType, err := s.earningAccountRepository.ReadAccountByMerchantAndType(merch.Id, "COMMISSION")
+			if err == nil {
+				andType.Amount += 3
+				s.earningAccountRepository.UpdateAccount(andType)
+			} else {
+				_, err = s.earningAccountRepository.CreateAccount(&entities.EarningAccount{
+					Type:       "COMMISSION",
+					Amount:     3,
+					MerchantId: merch.Id,
+				})
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
 
 	account, err := s.accountApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
 	if err != nil {
@@ -68,6 +130,14 @@ func (s *service) HandlePaymentIpn(data *utils.Payment) error {
 
 }
 
-func NewService(r payment.Repository, transactionRep transaction.Repository, merchantRep merchant.Repository, mpesaStoreRep mpesa_store.Repository) Service {
-	return &service{paymentRepository: r, transactionRepository: transactionRep, merchantRepository: merchantRep, mpesaStoreRepository: mpesaStoreRep, notifyApi: clients.GetNotifyClient(), accountApi: clients.GetAccountClient()}
+func NewService(r payment.Repository, transactionRep transaction.Repository, merchantRep merchant.Repository, mpesaStoreRep mpesa_store.Repository, earningAccRep earning_account.Repository, earningRep earning.Repository) Service {
+	return &service{paymentRepository: r,
+		transactionRepository:    transactionRep,
+		merchantRepository:       merchantRep,
+		mpesaStoreRepository:     mpesaStoreRep,
+		earningAccountRepository: earningAccRep,
+		earningRepository:        earningRep,
+		notifyApi:                clients.GetNotifyClient(),
+		accountApi:               clients.GetAccountClient(),
+	}
 }
