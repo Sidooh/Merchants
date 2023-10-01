@@ -84,7 +84,7 @@ func (api *ApiClient) GetInviters(accountId string) ([]Account, error) {
 	var apiResponse = new(AccountsApiResponse)
 
 	//TODO: Cache this
-	err := api.NewRequest(http.MethodGet, "/accounts/"+accountId+"/accounts?level_limit=3", nil).Send(apiResponse)
+	err := api.NewRequest(http.MethodGet, "/accounts/"+accountId+"/ancestors?level_limit=3", nil).Send(apiResponse)
 	if err != nil {
 		return nil, err
 	}
