@@ -114,7 +114,7 @@ func (s *service) HandlePaymentIpn(data *utils.Payment) error {
 	}
 
 	go func() {
-		message := fmt.Sprintf("KES%v Float for %s purchased successfully", payment.Amount, tx.Destination)
+		message := fmt.Sprintf("KES%v Float for %s purchased successfully", payment.Amount, strings.Join(strings.Split(data.Store, " ")[0:4], " "))
 		if payment.Status != "COMPLETED" {
 			message = fmt.Sprintf("Sorry, KES%v Float for %s could not be purchased", payment.Amount, tx.Destination)
 		}
