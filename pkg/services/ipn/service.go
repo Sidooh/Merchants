@@ -50,8 +50,10 @@ func (s *service) HandlePaymentIpn(data *utils.Payment) error {
 
 	// Compute cashback and commissions
 	// Compute cashback
+	cashback := float32(data.Charge) * .2
+
 	s.earningRepository.CreateEarning(&entities.Earning{
-		Amount:        3,
+		Amount:        cashback,
 		Type:          "SELF",
 		TransactionId: tx.Id,
 		MerchantId:    mt.Id,
@@ -59,12 +61,12 @@ func (s *service) HandlePaymentIpn(data *utils.Payment) error {
 
 	andType, err := s.earningAccountRepository.ReadAccountByMerchantAndType(mt.Id, "CASHBACK")
 	if err == nil {
-		andType.Amount += 3
+		andType.Amount += cashback
 		s.earningAccountRepository.UpdateAccount(andType)
 	} else {
 		_, err = s.earningAccountRepository.CreateAccount(&entities.EarningAccount{
 			Type:       "CASHBACK",
-			Amount:     3,
+			Amount:     cashback,
 			MerchantId: mt.Id,
 		})
 		if err != nil {
@@ -73,6 +75,8 @@ func (s *service) HandlePaymentIpn(data *utils.Payment) error {
 	}
 
 	// Compute commissions
+	commsission := cashback / 2
+
 	inviters, err := s.accountApi.GetInviters(strconv.Itoa(int(mt.AccountId)))
 	if err != nil {
 		return err
@@ -83,7 +87,7 @@ func (s *service) HandlePaymentIpn(data *utils.Payment) error {
 			merch, _ := s.merchantRepository.ReadMerchantByAccount(uint(inviter.Id))
 
 			s.earningRepository.CreateEarning(&entities.Earning{
-				Amount:        3,
+				Amount:        commsission,
 				Type:          "INVITE",
 				TransactionId: tx.Id,
 				MerchantId:    merch.Id,
@@ -91,12 +95,12 @@ func (s *service) HandlePaymentIpn(data *utils.Payment) error {
 
 			andType, err := s.earningAccountRepository.ReadAccountByMerchantAndType(merch.Id, "COMMISSION")
 			if err == nil {
-				andType.Amount += 3
+				andType.Amount += commsission
 				s.earningAccountRepository.UpdateAccount(andType)
 			} else {
 				_, err = s.earningAccountRepository.CreateAccount(&entities.EarningAccount{
 					Type:       "COMMISSION",
-					Amount:     3,
+					Amount:     commsission,
 					MerchantId: merch.Id,
 				})
 				if err != nil {
