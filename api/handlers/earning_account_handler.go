@@ -16,7 +16,7 @@ func GetEarningAccountsByMerchant(service earning_account.Service) fiber.Handler
 			return ctx.JSON(utils.ValidationErrorResponse(errors.New("invalid id parameter")))
 		}
 
-		fetched, err := service.FetchAccountsByAccountId(uint(id))
+		fetched, err := service.FetchAccountsByMerchant(uint(id))
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)
 		}
