@@ -10,9 +10,7 @@ type Earning struct {
 
 	Transaction Transaction `json:"-"`
 
-	MerchantId uint `json:"merchantId" gorm:"uniqueIndex:idx_earning"`
-
-	Merchant Merchant `json:"-"`
+	AccountId uint `json:"accountId" gorm:"uniqueIndex:idx_earnings"`
 
 	ModelTimeStamps
 }

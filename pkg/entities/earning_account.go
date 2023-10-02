@@ -3,12 +3,10 @@ package entities
 type EarningAccount struct {
 	ModelID
 
-	Type   string  `json:"type" gorm:"size:16;"` // CASHBACK / COMMISSION
+	Type   string  `json:"type" gorm:"not null;size:16;uniqueIndex:idx_earning_accounts"` // CASHBACK / COMMISSION
 	Amount float32 `json:"amount" gorm:"not null;type:decimal(12,2);"`
 
-	MerchantId uint `json:"merchantId" gorm:"not null;"`
-
-	Merchant Merchant `json:"-"`
+	AccountId uint `json:"accountId" gorm:"not null;uniqueIndex:idx_earning_accounts"`
 
 	ModelTimeStamps
 }

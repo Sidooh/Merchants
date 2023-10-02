@@ -10,8 +10,9 @@ import (
 type Repository interface {
 	CreateAccount(data *entities.EarningAccount) (*entities.EarningAccount, error)
 	ReadAccount(id uint) (*entities.EarningAccount, error)
+	ReadAccountsByAccountId(accountId uint) (*[]presenter.EarningAccount, error)
 	ReadAccountsByMerchant(merchantId uint) (*[]presenter.EarningAccount, error)
-	ReadAccountByMerchantAndType(merchantId uint, accType string) (*entities.EarningAccount, error)
+	ReadAccountByAccountIdAndType(accountId uint, accType string) (*entities.EarningAccount, error)
 	UpdateAccount(data *entities.EarningAccount) (*entities.EarningAccount, error)
 }
 type repository struct {
@@ -31,13 +32,24 @@ func (r *repository) ReadAccount(id uint) (result *entities.EarningAccount, err 
 	return
 }
 
-func (r *repository) ReadAccountsByMerchant(merchantId uint) (result *[]presenter.EarningAccount, err error) {
-	err = datastore.DB.Where("merchant_id", merchantId).Find(&result).Error
+func (r *repository) ReadAccountsByAccountId(accountId uint) (result *[]presenter.EarningAccount, err error) {
+	err = datastore.DB.Where("account_id", accountId).Find(&result).Error
 	return
 }
 
-func (r *repository) ReadAccountByMerchantAndType(merchantId uint, accType string) (result *entities.EarningAccount, err error) {
-	err = datastore.DB.Where("merchant_id", merchantId).Where("type", accType).First(&result).Error
+func (r *repository) ReadAccountsByMerchant(merchantId uint) (result *[]presenter.EarningAccount, err error) {
+	merchant := entities.Merchant{}
+	err = datastore.DB.First(&merchant, merchantId).Error
+	if err != nil {
+		return nil, err
+	}
+
+	err = datastore.DB.Where("account_id", merchant.AccountId).Find(&result).Error
+	return
+}
+
+func (r *repository) ReadAccountByAccountIdAndType(accountId uint, accType string) (result *entities.EarningAccount, err error) {
+	err = datastore.DB.Where("account_id", accountId).Where("type", accType).First(&result).Error
 	return
 }
 

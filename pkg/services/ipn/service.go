@@ -56,18 +56,18 @@ func (s *service) HandlePaymentIpn(data *utils.Payment) error {
 		Amount:        cashback,
 		Type:          "SELF",
 		TransactionId: tx.Id,
-		MerchantId:    mt.Id,
+		AccountId:     mt.AccountId,
 	})
 
-	andType, err := s.earningAccountRepository.ReadAccountByMerchantAndType(mt.Id, "CASHBACK")
+	andType, err := s.earningAccountRepository.ReadAccountByAccountIdAndType(mt.AccountId, "CASHBACK")
 	if err == nil {
 		andType.Amount += cashback
 		s.earningAccountRepository.UpdateAccount(andType)
 	} else {
 		_, err = s.earningAccountRepository.CreateAccount(&entities.EarningAccount{
-			Type:       "CASHBACK",
-			Amount:     cashback,
-			MerchantId: mt.Id,
+			Type:      "CASHBACK",
+			Amount:    cashback,
+			AccountId: mt.AccountId,
 		})
 		if err != nil {
 			return err
@@ -84,24 +84,22 @@ func (s *service) HandlePaymentIpn(data *utils.Payment) error {
 
 	if len(inviters) > 1 {
 		for _, inviter := range inviters[1:] {
-			merch, _ := s.merchantRepository.ReadMerchantByAccount(uint(inviter.Id))
-
 			s.earningRepository.CreateEarning(&entities.Earning{
 				Amount:        commsission,
 				Type:          "INVITE",
 				TransactionId: tx.Id,
-				MerchantId:    merch.Id,
+				AccountId:     uint(inviter.Id),
 			})
 
-			andType, err := s.earningAccountRepository.ReadAccountByMerchantAndType(merch.Id, "COMMISSION")
+			andType, err := s.earningAccountRepository.ReadAccountByAccountIdAndType(uint(inviter.Id), "COMMISSION")
 			if err == nil {
 				andType.Amount += commsission
 				s.earningAccountRepository.UpdateAccount(andType)
 			} else {
 				_, err = s.earningAccountRepository.CreateAccount(&entities.EarningAccount{
-					Type:       "COMMISSION",
-					Amount:     commsission,
-					MerchantId: merch.Id,
+					Type:      "COMMISSION",
+					Amount:    commsission,
+					AccountId: uint(inviter.Id),
 				})
 				if err != nil {
 					return err
