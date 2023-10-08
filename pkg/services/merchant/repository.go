@@ -9,7 +9,7 @@ import (
 // Repository interface allows us to access the CRUD Operations here.
 type Repository interface {
 	CreateMerchant(merchant *entities.Merchant) (*entities.Merchant, error)
-	ReadMerchants() (*[]presenter.Merchant, error)
+	ReadMerchants(filters Filters) (*[]presenter.Merchant, error)
 	ReadMerchant(id uint) (*presenter.Merchant, error)
 	ReadMerchantByAccount(accountId uint) (*presenter.Merchant, error)
 	ReadMerchantByCode(code uint) (*presenter.Merchant, error)
@@ -17,6 +17,12 @@ type Repository interface {
 	UpdateMerchant(merchant *entities.Merchant) (*presenter.Merchant, error)
 }
 type repository struct {
+}
+
+type Filters struct {
+	Columns []string
+
+	Accounts []string
 }
 
 func (r *repository) CreateMerchant(merchant *entities.Merchant) (*entities.Merchant, error) {
@@ -28,8 +34,17 @@ func (r *repository) CreateMerchant(merchant *entities.Merchant) (*entities.Merc
 	return merchant, nil
 }
 
-func (r *repository) ReadMerchants() (merchants *[]presenter.Merchant, err error) {
-	err = datastore.DB.Find(&merchants).Error
+func (r *repository) ReadMerchants(filters Filters) (merchants *[]presenter.Merchant, err error) {
+	query := datastore.DB.Order("id desc")
+	if len(filters.Columns) > 0 {
+		query = query.Select(filters.Columns)
+	}
+	if len(filters.Accounts) > 0 {
+		query = query.Where("account_id in ?", filters.Accounts)
+	}
+
+	err = query.Find(&merchants).Error
+
 	return
 }
 

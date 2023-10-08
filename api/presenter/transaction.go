@@ -7,4 +7,5 @@ type Transaction struct {
 	Amount      float32 `json:"amount"`
 	MerchantId  uint    `json:"merchant"`
 	Product     string  `json:"product"`
+	CreatedAt   string  `json:"created_at"`
 }

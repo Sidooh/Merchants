@@ -1,7 +1,6 @@
 package earning
 
 import (
-	"merchants.sidooh/api/presenter"
 	"merchants.sidooh/pkg/datastore"
 	"merchants.sidooh/pkg/entities"
 )
@@ -9,7 +8,8 @@ import (
 // Repository interface allows us to access the CRUD Operations here.
 type Repository interface {
 	CreateEarning(data *entities.Earning) (*entities.Earning, error)
-	ReadEarnings() (*[]presenter.Earning, error)
+	ReadEarnings() (*[]entities.Earning, error)
+	ReadPendingEarnings() (*[]entities.Earning, error)
 }
 type repository struct {
 }
@@ -23,8 +23,13 @@ func (r *repository) CreateEarning(data *entities.Earning) (*entities.Earning, e
 	return data, nil
 }
 
-func (r *repository) ReadEarnings() (results *[]presenter.Earning, err error) {
+func (r *repository) ReadEarnings() (results *[]entities.Earning, err error) {
 	err = datastore.DB.Find(&results).Error
+	return
+}
+
+func (r *repository) ReadPendingEarnings() (results *[]entities.Earning, err error) {
+	err = datastore.DB.Select("account_id, SUM(amount) amount").Where("status = ?", "PENDING").Group("account_id").Find(&results).Error
 	return
 }
 

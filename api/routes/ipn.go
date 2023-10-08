@@ -8,5 +8,6 @@ import (
 
 func IpnRouter(app fiber.Router, service ipn.Service) {
 	app.Post("/payments/ipn", handlers.HandlePaymentIpn(service))
+	app.Post("/test", handlers.Test(service))
 
 }

@@ -4,7 +4,8 @@ type Earning struct {
 	ModelID
 
 	Amount float32 `json:"amount" gorm:"not null;type:decimal(7,2);"`
-	Type   string  `json:"type" gorm:"size:16;"` //SELF / INVITE / SYSTEM
+	Type   string  `json:"type" gorm:"size:16;"`                   //SELF / INVITE / SYSTEM
+	Status string  `json:"status" gorm:"size:16; default:PENDING"` //PENDING / SAVED
 
 	TransactionId uint `json:"transaction_id" gorm:"not null;uniqueIndex:idx_earnings"`
 

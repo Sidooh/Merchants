@@ -4,17 +4,26 @@ import (
 	"merchants.sidooh/api/presenter"
 	"merchants.sidooh/pkg/datastore"
 	"merchants.sidooh/pkg/entities"
+	"time"
 )
 
 // Repository interface allows us to access the CRUD Operations here.
 type Repository interface {
 	CreateTransaction(transaction *entities.Transaction) (*entities.Transaction, error)
-	ReadTransactions() (*[]presenter.Transaction, error)
+	ReadTransactions(filters Filters) (*[]presenter.Transaction, error)
 	ReadTransaction(id uint) (*presenter.Transaction, error)
 	ReadTransactionsByMerchant(merchantId uint) (*[]presenter.Transaction, error)
 	UpdateTransaction(transaction *entities.Transaction) (*presenter.Transaction, error)
 }
 type repository struct {
+}
+
+type Filters struct {
+	Columns []string
+
+	Accounts  []string
+	Merchants []string
+	Days      int
 }
 
 func (r *repository) CreateTransaction(transaction *entities.Transaction) (*entities.Transaction, error) {
@@ -26,14 +35,22 @@ func (r *repository) CreateTransaction(transaction *entities.Transaction) (*enti
 	return transaction, nil
 }
 
-func (r *repository) ReadTransactions() (*[]presenter.Transaction, error) {
-	var transactions []presenter.Transaction
-	result := datastore.DB.Find(&transactions)
-	if result.Error != nil {
-		return nil, result.Error
+func (r *repository) ReadTransactions(filters Filters) (transactions *[]presenter.Transaction, err error) {
+	query := datastore.DB.Order("id desc")
+	if len(filters.Columns) > 0 {
+		query = query.Select(filters.Columns)
+	}
+	if len(filters.Merchants) > 0 {
+		query = query.Where("merchant_id in ?", filters.Merchants)
+	}
+	if filters.Days > 0 {
+		duration := time.Duration(filters.Days) * 24 * time.Hour
+		query = query.Where("created_at > ?", time.Now().Add(-duration))
 	}
 
-	return &transactions, nil
+	err = query.Find(&transactions).Error
+
+	return
 }
 
 func (r *repository) ReadTransaction(id uint) (*presenter.Transaction, error) {

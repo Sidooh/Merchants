@@ -10,7 +10,7 @@ import (
 )
 
 type Service interface {
-	FetchMerchants() (*[]presenter.Merchant, error)
+	FetchMerchants(accounts []string) (*[]presenter.Merchant, error)
 	GetMerchant(id uint) (*presenter.Merchant, error)
 	GetMerchantByAccount(accountId uint) (*presenter.Merchant, error)
 	GetMerchantByIdNumber(idNumber string) (*presenter.Merchant, error)
@@ -25,8 +25,10 @@ type service struct {
 	repository  Repository
 }
 
-func (s *service) FetchMerchants() (*[]presenter.Merchant, error) {
-	return s.repository.ReadMerchants()
+func (s *service) FetchMerchants(accounts []string) (*[]presenter.Merchant, error) {
+	return s.repository.ReadMerchants(Filters{
+		Accounts: accounts,
+	})
 }
 
 func (s *service) GetMerchant(id uint) (*presenter.Merchant, error) {

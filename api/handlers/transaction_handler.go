@@ -9,6 +9,7 @@ import (
 	"merchants.sidooh/pkg/services/transaction"
 	"merchants.sidooh/utils"
 	"net/http"
+	"strings"
 )
 
 type FloatPurchaseRequest struct {
@@ -17,9 +18,34 @@ type FloatPurchaseRequest struct {
 	Amount int    `json:"amount" validate:"required,numeric"`
 }
 
+type EarningsWithdrawalRequest struct {
+	Destination string `json:"destination" validate:"required,oneof=MPESA FLOAT"`
+	Account     string `json:"account" validate:"required,numeric"`
+	Amount      int    `json:"amount" validate:"required,numeric"`
+}
+
+type TransactionsFetchRequest struct {
+	Merchants string `validate:"omitempty,dive,numeric"`
+	Days      int    `validate:"omitempty,numeric"`
+}
+
 func GetTransactions(service transaction.Service) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		fetched, err := service.FetchTransactions()
+		var merchantIds []string
+		var accountIds []string
+
+		if ctx.Query("accounts") != "" {
+			accountIds = strings.Split(ctx.Query("accounts"), ",")
+		}
+		if ctx.Query("merchants") != "" {
+			merchantIds = strings.Split(ctx.Query("merchants"), ",")
+		}
+
+		fetched, err := service.FetchTransactions(transaction.Filters{
+			Accounts:  accountIds,
+			Merchants: merchantIds,
+			Days:      ctx.QueryInt("days"),
+		})
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)
 		}
@@ -84,6 +110,36 @@ func BuyFloat(service transaction.Service) fiber.Handler {
 			MerchantId:  uint(id),
 			Product:     "FLOAT",
 		}, request.Agent, request.Store)
+		if err != nil {
+			return utils.HandleErrorResponse(ctx, err)
+		}
+
+		return utils.HandleSuccessResponse(ctx, fetched)
+	}
+}
+
+func WithdrawEarnings(service transaction.Service) fiber.Handler {
+	return func(ctx *fiber.Ctx) error {
+		var request EarningsWithdrawalRequest
+		if err := middleware.BindAndValidateRequest(ctx, &request); err != nil {
+			return ctx.Status(http.StatusUnprocessableEntity).JSON(err)
+		}
+
+		id, err := ctx.ParamsInt("merchantId")
+		if err != nil {
+			ctx.Status(http.StatusBadRequest)
+			return ctx.JSON(utils.ValidationErrorResponse(errors.New("invalid merchant id parameter")))
+		}
+
+		dest := fmt.Sprintf("%v-%v", request.Destination, request.Account)
+
+		fetched, err := service.WithdrawEarnings(&entities.Transaction{
+			Amount:      float32(request.Amount),
+			Description: "Earnings Withdrawal",
+			Destination: &dest,
+			MerchantId:  uint(id),
+			Product:     "WITHDRAWAL",
+		}, request.Destination, request.Account)
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)
 		}

@@ -114,3 +114,24 @@ func (api *ApiClient) BuyMpesaFloat(accountId, floatAccountId uint, amount int, 
 
 	return apiResponse.Data, err
 }
+
+func (api *ApiClient) Withdraw(accountId, floatAccountId uint, amount int, destination, destinationAccount string) (*utils.Payment, error) {
+	var apiResponse = new(utils.PaymentApiResponse)
+
+	jsonData, err := json.Marshal(map[string]interface{}{
+		"account_id":  accountId,
+		"amount":      amount,
+		"description": "Merchant Withdrawal",
+		//"reference": "test",
+		"source":              "FLOAT",
+		"source_account":      floatAccountId,
+		"ipn":                 viper.GetString("APP_URL") + "/api/v1/payments/ipn",
+		"destination":         destination,
+		"destination_account": destinationAccount,
+	})
+	dataBytes := bytes.NewBuffer(jsonData)
+
+	err = api.NewRequest(http.MethodPost, "/payments/withdraw", dataBytes).Send(apiResponse)
+
+	return apiResponse.Data, err
+}

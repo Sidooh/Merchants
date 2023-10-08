@@ -77,7 +77,7 @@ func GetMerchantByIdNumber(service merchant.Service) fiber.Handler {
 
 func GetMerchants(service merchant.Service) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		fetched, err := service.FetchMerchants()
+		fetched, err := service.FetchMerchants([]string{})
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)
 		}

@@ -11,9 +11,10 @@ type Repository interface {
 	CreateAccount(data *entities.EarningAccount) (*entities.EarningAccount, error)
 	ReadAccount(id uint) (*entities.EarningAccount, error)
 	ReadAccountsByAccountId(accountId uint) (*[]presenter.EarningAccount, error)
-	ReadAccountsByMerchant(merchantId uint) (*[]presenter.EarningAccount, error)
+	ReadAccountsByMerchant(merchantId uint) ([]entities.EarningAccount, error)
 	ReadAccountByAccountIdAndType(accountId uint, accType string) (*entities.EarningAccount, error)
 	UpdateAccount(data *entities.EarningAccount) (*entities.EarningAccount, error)
+	UpdateColumn(data *entities.EarningAccount, column string, value interface{}) (*entities.EarningAccount, error)
 }
 type repository struct {
 }
@@ -37,7 +38,7 @@ func (r *repository) ReadAccountsByAccountId(accountId uint) (result *[]presente
 	return
 }
 
-func (r *repository) ReadAccountsByMerchant(merchantId uint) (result *[]presenter.EarningAccount, err error) {
+func (r *repository) ReadAccountsByMerchant(merchantId uint) (result []entities.EarningAccount, err error) {
 	merchant := entities.Merchant{}
 	err = datastore.DB.First(&merchant, merchantId).Error
 	if err != nil {
@@ -55,6 +56,15 @@ func (r *repository) ReadAccountByAccountIdAndType(accountId uint, accType strin
 
 func (r *repository) UpdateAccount(data *entities.EarningAccount) (*entities.EarningAccount, error) {
 	result := datastore.DB.Updates(data)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return r.ReadAccount(data.Id)
+}
+
+func (r *repository) UpdateColumn(data *entities.EarningAccount, column string, value interface{}) (*entities.EarningAccount, error) {
+	result := datastore.DB.Model(data).Update(column, value)
 	if result.Error != nil {
 		return nil, result.Error
 	}
