@@ -10,7 +10,7 @@ import (
 
 type Service interface {
 	FetchAccountsByAccountId(accountId uint) (*[]presenter.EarningAccount, error)
-	FetchAccountsByMerchant(merchantId uint) (*[]presenter.EarningAccount, error)
+	FetchAccountsByMerchant(merchantId uint) ([]presenter.EarningAccount, error)
 	CreateAccount(data *entities.EarningAccount) (*entities.EarningAccount, error)
 
 	CreditAccount(accountId uint, amount float32) (*entities.EarningAccount, error)
@@ -26,12 +26,12 @@ func (s *service) FetchAccountsByAccountId(accountId uint) (*[]presenter.Earning
 	return s.repository.ReadAccountsByAccountId(accountId)
 }
 
-func (s *service) FetchAccountsByMerchant(merchantId uint) (results *[]presenter.EarningAccount, err error) {
+func (s *service) FetchAccountsByMerchant(merchantId uint) (results []presenter.EarningAccount, err error) {
 	accounts, err := s.repository.ReadAccountsByMerchant(merchantId)
 	if err != nil {
 		return nil, err
 	}
-	utils.ConvertStruct(accounts, results)
+	utils.ConvertStruct(accounts, &results)
 
 	return
 }

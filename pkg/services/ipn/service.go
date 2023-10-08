@@ -32,10 +32,15 @@ type service struct {
 	earningAccountRepository earning_account.Repository
 	earningRepository        earning.Repository
 	earningAccountService    earning_account.Service
+	earningService           earning.Service
 }
 
 func (s *service) Test() interface{} {
-	earnings, err := s.earningRepository.ReadPendingEarnings()
+	earnings, err := s.earningService.SaveEarnings()
+	if err != nil {
+		return nil
+	}
+	//earnings, err := s.earningRepository.ReadPendingEarnings()
 	if err != nil {
 		return err
 	}
@@ -177,7 +182,7 @@ func (s *service) computeCashback(mt *presenter.Merchant, tx *presenter.Transact
 	return err
 }
 
-func NewService(r payment.Repository, transactionRep transaction.Repository, merchantRep merchant.Repository, mpesaStoreRep mpesa_store.Repository, earningAccRep earning_account.Repository, earningRep earning.Repository, earningAccSrv earning_account.Service) Service {
+func NewService(r payment.Repository, transactionRep transaction.Repository, merchantRep merchant.Repository, mpesaStoreRep mpesa_store.Repository, earningAccRep earning_account.Repository, earningRep earning.Repository, earningAccSrv earning_account.Service, earningSrv earning.Service) Service {
 	return &service{paymentRepository: r,
 		transactionRepository:    transactionRep,
 		merchantRepository:       merchantRep,
@@ -187,5 +192,6 @@ func NewService(r payment.Repository, transactionRep transaction.Repository, mer
 		earningAccountService:    earningAccSrv,
 		notifyApi:                clients.GetNotifyClient(),
 		accountApi:               clients.GetAccountClient(),
+		earningService:           earningSrv,
 	}
 }

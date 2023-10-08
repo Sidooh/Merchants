@@ -8,6 +8,7 @@ import (
 // Repository interface allows us to access the CRUD Operations here.
 type Repository interface {
 	CreateEarning(data *entities.Earning) (*entities.Earning, error)
+	UpdateEarning(data *entities.Earning) (*entities.Earning, error)
 	ReadEarnings() (*[]entities.Earning, error)
 	ReadPendingEarnings() (*[]entities.Earning, error)
 }
@@ -29,8 +30,17 @@ func (r *repository) ReadEarnings() (results *[]entities.Earning, err error) {
 }
 
 func (r *repository) ReadPendingEarnings() (results *[]entities.Earning, err error) {
-	err = datastore.DB.Select("account_id, SUM(amount) amount").Where("status = ?", "PENDING").Group("account_id").Find(&results).Error
+	err = datastore.DB.Where("status = ?", "PENDING").Find(&results).Error
 	return
+}
+
+func (r *repository) UpdateEarning(data *entities.Earning) (*entities.Earning, error) {
+	result := datastore.DB.Updates(&data)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return data, nil
 }
 
 // NewRepo is the single instance repo that is being created.

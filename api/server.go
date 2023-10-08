@@ -21,6 +21,7 @@ import (
 	"merchants.sidooh/pkg/services/earning_account"
 	"merchants.sidooh/pkg/services/earning_account_transaction"
 	"merchants.sidooh/pkg/services/ipn"
+	"merchants.sidooh/pkg/services/jobs"
 	"merchants.sidooh/pkg/services/location"
 	"merchants.sidooh/pkg/services/merchant"
 	"merchants.sidooh/pkg/services/mpesa_store"
@@ -76,6 +77,7 @@ func setHandlers(app *fiber.App) {
 	clients.InitAccountClient()
 	clients.InitPaymentClient()
 	clients.InitNotifyClient()
+	clients.InitSavingsClient()
 
 	merchantRep := merchant.NewRepo()
 	merchantSrv := merchant.NewService(merchantRep)
@@ -87,7 +89,7 @@ func setHandlers(app *fiber.App) {
 	//paymentSrv := payment.NewService(paymentRep)
 
 	earningRep := earning.NewRepo()
-	//earningSrv := earning.NewService(earningRep)
+	earningSrv := earning.NewService(earningRep)
 
 	earningAccTxRep := earning_account_transaction.NewRepo()
 
@@ -100,9 +102,11 @@ func setHandlers(app *fiber.App) {
 	mpesaStoreRep := mpesa_store.NewRepo()
 	mpesaStoreSrv := mpesa_store.NewService(mpesaStoreRep)
 
-	ipnSrv := ipn.NewService(paymentRep, transactionRep, merchantRep, mpesaStoreRep, earningAccRep, earningRep, earningAccSrv)
+	ipnSrv := ipn.NewService(paymentRep, transactionRep, merchantRep, mpesaStoreRep, earningAccRep, earningRep, earningAccSrv, earningSrv)
+	jobsSrv := jobs.NewService(earningSrv)
 
 	routes.IpnRouter(v1, ipnSrv)
+	routes.JobsRouter(v1, jobsSrv)
 
 	app.Use(jwt.New(jwt.Config{
 		Secret: viper.GetString("JWT_KEY"),

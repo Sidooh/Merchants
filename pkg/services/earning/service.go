@@ -1,16 +1,11 @@
 package earning
 
 import (
-	"fmt"
-	"merchants.sidooh/api/presenter"
 	"merchants.sidooh/pkg/clients"
 	"merchants.sidooh/pkg/entities"
-	"merchants.sidooh/utils"
 )
 
 type Service interface {
-	FetchEarnings() (*[]presenter.Earning, error)
-	//FetchPendingEarnings() (*[]presenter.Earning, error)
 	SaveEarnings() (interface{}, error)
 	CreateEarning(data *entities.Earning) (*entities.Earning, error)
 }
@@ -20,41 +15,42 @@ type service struct {
 	savingsApi *clients.ApiClient
 }
 
-func (s *service) FetchEarnings() (results *[]presenter.Earning, err error) {
-	earnings, err := s.repository.ReadEarnings()
-	if err != nil {
-		return nil, err
-	}
-	utils.ConvertStruct(earnings, results)
-
-	return
-}
-
-//func (s *service) FetchPendingEarnings() (results *[]presenter.Earning, err error) {
-//	earnings, err := s.repository.ReadPendingEarnings()
-//	if err != nil {
-//		return nil, err
-//	}
-//	utils.ConvertStruct(earnings, results)
-//
-//	return
-//}
-
 func (s *service) SaveEarnings() (interface{}, error) {
 	earnings, err := s.repository.ReadPendingEarnings()
 
-	savings := map[int]int{}
+	savings := map[uint]clients.Investment{}
 	for _, earning := range *earnings {
-		savings[int(earning.AccountId)] = int(earning.Amount)
+		inv := savings[earning.AccountId]
+		inv.AccountId = earning.AccountId
+
+		if earning.Type == "SELF" {
+			inv.CashbackAmount += .2 * earning.Amount
+		}
+
+		if earning.Type == "INVITE" {
+			inv.CommissionAmount += .2 * earning.Amount
+		}
+
+		savings[earning.AccountId] = inv
 	}
 
-	saveEarnings, err := s.savingsApi.SaveEarnings()
-	fmt.Println(saveEarnings, err)
+	var investments []clients.Investment
+
+	for _, investment := range savings {
+		investments = append(investments, investment)
+	}
+
+	saveEarnings, err := s.savingsApi.SaveEarnings(investments)
 	if err != nil {
 		return nil, err
 	}
 
-	return savings, err
+	for _, earning := range *earnings {
+		earning.Status = "COMPLETED"
+		s.repository.UpdateEarning(&earning)
+	}
+
+	return saveEarnings, err
 }
 
 func (s *service) CreateEarning(data *entities.Earning) (*entities.Earning, error) {

@@ -95,6 +95,10 @@ func (s *service) WithdrawEarnings(data *entities.Transaction, destination, acco
 		return nil, err
 	}
 
+	if destination == "FLOAT" && strconv.Itoa(int(merchant.FloatAccountId)) != account {
+		return nil, pkg.ErrUnauthorized
+	}
+
 	earningAccounts, err := s.earningAccRepository.ReadAccountsByMerchant(data.MerchantId)
 	if err != nil {
 		return nil, err
