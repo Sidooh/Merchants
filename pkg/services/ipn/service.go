@@ -74,9 +74,13 @@ func (s *service) HandlePaymentIpn(data *utils.Payment) error {
 		}
 
 		go func() {
-			message := fmt.Sprintf("KES%v Withdrawal to %s was successful", payment.Amount, tx.Destination)
+			destination := tx.Destination
+			if strings.Split(tx.Destination, "")[0] == "FLOAT" {
+				destination = "VOUCHER"
+			}
+			message := fmt.Sprintf("KES%v Withdrawal to %s was successful", payment.Amount, destination)
 			if payment.Status != "COMPLETED" {
-				message = fmt.Sprintf("Sorry, KES%v Withdrawal to %s could not be processed", payment.Amount, tx.Destination)
+				message = fmt.Sprintf("Sorry, KES%v Withdrawal to %s could not be processed", payment.Amount, destination)
 			}
 			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
 		}()
