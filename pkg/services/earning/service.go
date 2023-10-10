@@ -1,21 +1,23 @@
 package earning
 
 import (
+	"fmt"
 	"merchants.sidooh/pkg/clients"
 	"merchants.sidooh/pkg/entities"
 )
 
 type Service interface {
-	SaveEarnings() (interface{}, error)
+	SaveEarnings() error
 	CreateEarning(data *entities.Earning) (*entities.Earning, error)
 }
 
 type service struct {
 	repository Repository
 	savingsApi *clients.ApiClient
+	notifyApi  *clients.ApiClient
 }
 
-func (s *service) SaveEarnings() (interface{}, error) {
+func (s *service) SaveEarnings() error {
 	earnings, err := s.repository.ReadPendingEarnings()
 
 	savings := map[uint]clients.Investment{}
@@ -40,17 +42,28 @@ func (s *service) SaveEarnings() (interface{}, error) {
 		investments = append(investments, investment)
 	}
 
-	saveEarnings, err := s.savingsApi.SaveEarnings(investments)
-	if err != nil {
-		return nil, err
+	//message := "STATUS:SAVINGS\n\n"
+
+	if len(*earnings) > 0 {
+		savedEarnings, err := s.savingsApi.SaveEarnings(investments)
+		if err != nil {
+			return err
+		}
+
+		if _, ok := savedEarnings["completed"]; ok {
+			fmt.Println(ok)
+			//message += fmt.Sprintf("Processed earnings for %s'.count($completed)."  accounts\n");
+		}
+	} else {
+
 	}
 
-	for _, earning := range *earnings {
-		earning.Status = "COMPLETED"
-		s.repository.UpdateEarning(&earning)
-	}
+	//for _, earning := range *earnings {
+	//	earning.Status = "COMPLETED"
+	//	s.repository.UpdateEarning(&earning)
+	//}
 
-	return saveEarnings, err
+	return err
 }
 
 func (s *service) CreateEarning(data *entities.Earning) (*entities.Earning, error) {
@@ -58,5 +71,5 @@ func (s *service) CreateEarning(data *entities.Earning) (*entities.Earning, erro
 }
 
 func NewService(r Repository) Service {
-	return &service{repository: r, savingsApi: clients.GetSavingsClient()}
+	return &service{repository: r, savingsApi: clients.GetSavingsClient(), notifyApi: clients.GetNotifyClient()}
 }

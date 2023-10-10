@@ -25,13 +25,3 @@ func HandlePaymentIpn(service ipn.Service) fiber.Handler {
 		return utils.HandleSuccessResponse(ctx, nil)
 	}
 }
-
-func Test(service ipn.Service) fiber.Handler {
-	return func(ctx *fiber.Ctx) error {
-		logger.ClientLog.Info(ctx.String(), "data", string(ctx.Body()), "headers", ctx.GetReqHeaders())
-
-		data := service.Test()
-
-		return utils.HandleSuccessResponse(ctx, data)
-	}
-}

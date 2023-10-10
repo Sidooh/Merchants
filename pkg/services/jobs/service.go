@@ -18,13 +18,14 @@ type service struct {
 
 func (s *service) EarningsInvestments() error {
 	go func() {
-		_, err := s.earningService.SaveEarnings()
+		err := s.earningService.SaveEarnings()
 		if err != nil {
 			message := fmt.Sprintf("Failed to save process merchant earnings")
 			logger.ClientLog.Error(message, err, err)
 
 			s.notifyApi.SendSMS("DEFAULT", "0780611696", message)
 		}
+
 	}()
 
 	return nil

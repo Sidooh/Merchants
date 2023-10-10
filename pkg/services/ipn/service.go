@@ -19,7 +19,6 @@ import (
 
 type Service interface {
 	HandlePaymentIpn(data *utils.Payment) error
-	Test() interface{}
 }
 
 type service struct {
@@ -33,18 +32,6 @@ type service struct {
 	earningRepository        earning.Repository
 	earningAccountService    earning_account.Service
 	earningService           earning.Service
-}
-
-func (s *service) Test() interface{} {
-	earnings, err := s.earningService.SaveEarnings()
-	if err != nil {
-		return nil
-	}
-	//earnings, err := s.earningRepository.ReadPendingEarnings()
-	if err != nil {
-		return err
-	}
-	return earnings
 }
 
 func (s *service) HandlePaymentIpn(data *utils.Payment) error {
@@ -126,7 +113,7 @@ func (s *service) computeCashback(mt *presenter.Merchant, tx *presenter.Transact
 	//s.earningAccountService.DebitAccount(earningAcc.AccountId, cashback) // Debit acc for savings
 
 	// Compute commissions
-	commission := cashback / 2
+	commission := float32(data.Charge) * .1
 
 	inviters, err := s.accountApi.GetInviters(strconv.Itoa(int(mt.AccountId)))
 	if err != nil {

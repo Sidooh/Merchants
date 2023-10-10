@@ -20,9 +20,12 @@ func GetSavingsClient() *ApiClient {
 	return savingsClient
 }
 
-type SavingsAccountApiResponse struct {
+type InvestmentTransaction struct {
+}
+
+type InvestmentsApiResponse struct {
 	ApiResponse
-	Data []string `json:"data"`
+	Data map[string]map[string][]InvestmentTransaction `json:"data"`
 }
 
 type Investment struct {
@@ -31,8 +34,8 @@ type Investment struct {
 	CommissionAmount float32 `json:"commission_amount"`
 }
 
-func (api *ApiClient) SaveEarnings(investments []Investment) ([]string, error) {
-	res := new(SavingsAccountApiResponse)
+func (api *ApiClient) SaveEarnings(investments []Investment) (map[string]map[string][]InvestmentTransaction, error) {
+	res := new(InvestmentsApiResponse)
 
 	jsonData, err := json.Marshal(investments)
 	dataBytes := bytes.NewBuffer(jsonData)
