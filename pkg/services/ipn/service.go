@@ -109,7 +109,7 @@ func (s *service) computeCashback(mt *presenter.Merchant, tx *presenter.Transact
 			return err
 		}
 	}
-	s.earningAccountService.CreditAccount(earningAcc.AccountId, cashback)
+	s.earningAccountService.CreditAccount(earningAcc.Id, cashback)
 	//s.earningAccountService.DebitAccount(earningAcc.AccountId, cashback) // Debit acc for savings
 
 	// Compute commissions
@@ -139,7 +139,7 @@ func (s *service) computeCashback(mt *presenter.Merchant, tx *presenter.Transact
 					return err
 				}
 			}
-			s.earningAccountService.CreditAccount(earningAcc.AccountId, commission)
+			s.earningAccountService.CreditAccount(earningAcc.Id, commission)
 
 		}
 	}
