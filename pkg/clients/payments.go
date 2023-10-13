@@ -115,6 +115,24 @@ func (api *ApiClient) BuyMpesaFloat(accountId, floatAccountId uint, amount int, 
 	return apiResponse.Data, err
 }
 
+func (api *ApiClient) GetWithdrawalCharges() ([]utils.AmountCharge, error) {
+	endpoint := "/charges/withdrawal"
+	apiResponse := new(utils.ChargesApiResponse)
+
+	// TODO: Configure caching
+	//charges := cache.Cache.Get[[]utils.AmountCharge](endpoint)
+	//if charges != nil && len(charges) > 0 {
+	//	return *charges, nil
+	//}
+
+	if err := api.NewRequest(http.MethodGet, endpoint, nil).Send(&apiResponse); err != nil {
+		return nil, err
+	}
+	//cache.Cache.Set(endpoint, apiResponse.Data, 28*24*time.Hour)
+
+	return *apiResponse.Data, nil
+}
+
 func (api *ApiClient) Withdraw(accountId, floatAccountId uint, amount int, destination, destinationAccount string) (*utils.Payment, error) {
 	var apiResponse = new(utils.PaymentApiResponse)
 

@@ -14,7 +14,7 @@ type Service interface {
 	CreateAccount(data *entities.EarningAccount) (*entities.EarningAccount, error)
 
 	CreditAccount(accountId uint, amount float32) (*entities.EarningAccount, error)
-	DebitAccount(accountId uint, amount float32) (*entities.EarningAccount, error)
+	DebitAccount(accountId uint, amount float32) (*entities.EarningAccount, *entities.EarningAccountTransaction, error)
 }
 
 type service struct {
@@ -43,7 +43,7 @@ func (s *service) CreditAccount(accountId uint, amount float32) (*entities.Earni
 		return nil, err
 	}
 
-	// create tx
+	// create tx //TODO: add descriptions too
 	s.earningAccTxRepository.CreateTransaction(&entities.EarningAccountTransaction{
 		Type:             "CREDIT",
 		Amount:           amount,
@@ -60,32 +60,35 @@ func (s *service) CreditAccount(accountId uint, amount float32) (*entities.Earni
 	return account, nil
 }
 
-func (s *service) DebitAccount(accountId uint, amount float32) (*entities.EarningAccount, error) {
+func (s *service) DebitAccount(accountId uint, amount float32) (*entities.EarningAccount, *entities.EarningAccountTransaction, error) {
 	// TODO: use db tx
 	account, err := s.repository.ReadAccount(accountId)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if account.Amount < amount {
-		return nil, pkg.ErrInsufficientBalance
+		return nil, nil, pkg.ErrInsufficientBalance
 	}
 
-	// create tx
-	s.earningAccTxRepository.CreateTransaction(&entities.EarningAccountTransaction{
+	// create tx //TODO: add descriptions too
+	tx, err := s.earningAccTxRepository.CreateTransaction(&entities.EarningAccountTransaction{
 		Type:             "DEBIT",
 		Amount:           amount,
 		EarningAccountId: accountId,
 	})
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// update acc
 	account.Amount -= amount
 	account, err = s.repository.UpdateColumn(account, "amount", account.Amount)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return account, nil
+	return account, tx, nil
 }
 
 func (s *service) CreateAccount(data *entities.EarningAccount) (*entities.EarningAccount, error) {

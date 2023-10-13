@@ -2,7 +2,6 @@ package transaction
 
 import (
 	"cmp"
-	"fmt"
 	"merchants.sidooh/api/presenter"
 	"merchants.sidooh/pkg"
 	"merchants.sidooh/pkg/clients"
@@ -20,7 +19,7 @@ type Service interface {
 	GetTransactionsByMerchant(merchantId uint) (*[]presenter.Transaction, error)
 	CreateTransaction(transaction *entities.Transaction) (*entities.Transaction, error)
 	PurchaseFloat(transaction *entities.Transaction, agent, store string) (*entities.Transaction, error)
-	WithdrawEarnings(transaction *entities.Transaction, destination, account string) (*entities.Transaction, error)
+	WithdrawEarnings(transaction *entities.Transaction, source, destination, account string) (*entities.Transaction, error)
 	UpdateTransaction(transaction *entities.Transaction) (*presenter.Transaction, error)
 }
 
@@ -89,7 +88,7 @@ func (s *service) PurchaseFloat(data *entities.Transaction, agent, store string)
 	return
 }
 
-func (s *service) WithdrawEarnings(data *entities.Transaction, destination, account string) (tx *entities.Transaction, err error) {
+func (s *service) WithdrawEarnings(data *entities.Transaction, source, destination, account string) (tx *entities.Transaction, err error) {
 	merchant, err := s.merchantRepository.ReadMerchant(data.MerchantId)
 	if err != nil {
 		return nil, err
@@ -99,48 +98,72 @@ func (s *service) WithdrawEarnings(data *entities.Transaction, destination, acco
 		return nil, pkg.ErrUnauthorized
 	}
 
-	earningAccounts, err := s.earningAccRepository.ReadAccountsByMerchant(data.MerchantId)
-	if err != nil {
-		return nil, err
+	charge := float32(s.getWithdrawalCharge(int(data.Amount)))
+	if destination == "FLOAT" {
+		charge = 0.0
 	}
 
-	//sort with highest balance first
-	slices.SortFunc(earningAccounts, func(a, b entities.EarningAccount) int {
-		return 0 - cmp.Compare(a.Amount, b.Amount) // reversed
-	})
+	var earningTXs []entities.EarningAccountTransaction
 
-	var totalBalance float32
-
-	for _, earningAccount := range earningAccounts {
-		totalBalance += earningAccount.Amount
-	}
-
-	//TODO: get actual charges here
-	if totalBalance < data.Amount+15 {
-		return nil, pkg.ErrInsufficientBalance
-	}
-
-	totalWithdrawal := data.Amount + 15
-
-	var earningTXs []uint
-	for _, earningAccount := range earningAccounts {
-		toDebit := totalWithdrawal
-
-		if earningAccount.Amount > totalWithdrawal {
-			totalWithdrawal -= totalWithdrawal
-		} else {
-			totalWithdrawal -= earningAccount.Amount
-			toDebit = earningAccount.Amount
-		}
-
-		tx, err := s.earningAccService.DebitAccount(earningAccount.Id, toDebit)
+	if source != "" {
+		earningAccount, err := s.earningAccRepository.ReadAccountByAccountIdAndType(merchant.AccountId, source)
 		if err != nil {
 			return nil, err
 		}
-		earningTXs = append(earningTXs, tx.Id)
 
-		if totalWithdrawal == 0 {
-			break
+		if earningAccount.Amount < data.Amount+charge {
+			return nil, pkg.ErrInsufficientBalance
+		}
+
+		_, tx, err := s.earningAccService.DebitAccount(earningAccount.Id, data.Amount+charge)
+		if err != nil {
+			return nil, err
+		}
+
+		earningTXs = append(earningTXs, *tx)
+
+	} else {
+		earningAccounts, err := s.earningAccRepository.ReadAccountsByMerchant(data.MerchantId)
+		if err != nil {
+			return nil, err
+		}
+
+		//sort with highest balance first
+		slices.SortFunc(earningAccounts, func(a, b entities.EarningAccount) int {
+			return 0 - cmp.Compare(a.Amount, b.Amount) // reversed
+		})
+
+		var totalBalance float32
+
+		for _, earningAccount := range earningAccounts {
+			totalBalance += earningAccount.Amount
+		}
+
+		if totalBalance < data.Amount+charge {
+			return nil, pkg.ErrInsufficientBalance
+		}
+
+		totalWithdrawal := data.Amount + charge
+
+		for _, earningAccount := range earningAccounts {
+			toDebit := totalWithdrawal
+
+			if earningAccount.Amount > totalWithdrawal {
+				totalWithdrawal -= totalWithdrawal
+			} else {
+				totalWithdrawal -= earningAccount.Amount
+				toDebit = earningAccount.Amount
+			}
+
+			_, tx, err := s.earningAccService.DebitAccount(earningAccount.Id, toDebit)
+			if err != nil {
+				return nil, err
+			}
+			earningTXs = append(earningTXs, *tx)
+
+			if totalWithdrawal == 0 {
+				break
+			}
 		}
 	}
 
@@ -151,11 +174,18 @@ func (s *service) WithdrawEarnings(data *entities.Transaction, destination, acco
 
 	payment, err := s.paymentsApi.Withdraw(merchant.AccountId, 1, int(tx.Amount), destination, account)
 	if err != nil {
-		tx.Status = "FAILED"
-		s.repository.UpdateTransaction(tx)
 
 		// TODO: reverse earningTXs
-		fmt.Println(earningTXs)
+		for _, earningTx := range earningTXs {
+			_, err := s.earningAccService.CreditAccount(earningTx.EarningAccountId, earningTx.Amount)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		tx.Status = "FAILED"
+		_, err := s.repository.UpdateTransaction(tx)
+
 		return nil, err
 	}
 
@@ -177,6 +207,21 @@ func (s *service) CreateTransaction(transaction *entities.Transaction) (*entitie
 
 func (s *service) UpdateTransaction(transaction *entities.Transaction) (*presenter.Transaction, error) {
 	return s.repository.UpdateTransaction(transaction)
+}
+
+func (s *service) getWithdrawalCharge(amount int) int {
+	charges, err := s.paymentsApi.GetWithdrawalCharges()
+	if err != nil {
+		return 0
+	}
+
+	for _, charge := range charges {
+		if charge.Min <= amount && amount <= charge.Max {
+			return charge.Charge
+		}
+	}
+
+	return 0
 }
 
 func NewService(r Repository, merchantRepo merchant.Repository, paymentRepo payment.Repository, earningAccRepo earning_account.Repository, earningAccSrv earning_account.Service) Service {

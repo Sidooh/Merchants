@@ -22,3 +22,14 @@ type PaymentApiResponse struct {
 	ApiResponse
 	Data *Payment `json:"data"`
 }
+
+type AmountCharge struct {
+	Min    int
+	Max    int
+	Charge int
+}
+
+type ChargesApiResponse struct {
+	ApiResponse
+	Data *[]AmountCharge `json:"data"`
+}

@@ -19,6 +19,7 @@ type FloatPurchaseRequest struct {
 }
 
 type EarningsWithdrawalRequest struct {
+	Source      string `json:"source" validate:"required,oneof=CASHBACK COMMISSION"`
 	Destination string `json:"destination" validate:"required,oneof=MPESA FLOAT"`
 	Account     string `json:"account" validate:"required,numeric"`
 	Amount      int    `json:"amount" validate:"required,numeric"`
@@ -139,7 +140,7 @@ func WithdrawEarnings(service transaction.Service) fiber.Handler {
 			Destination: &dest,
 			MerchantId:  uint(id),
 			Product:     "WITHDRAWAL",
-		}, request.Destination, request.Account)
+		}, request.Source, request.Destination, request.Account)
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)
 		}
