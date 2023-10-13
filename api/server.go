@@ -96,13 +96,13 @@ func setHandlers(app *fiber.App) {
 	earningAccRep := earning_account.NewRepo()
 	earningAccSrv := earning_account.NewService(earningAccRep, earningAccTxRep)
 
-	transactionRep := transaction.NewRepo()
-	transactionSrv := transaction.NewService(transactionRep, merchantRep, paymentRep, earningAccRep, earningAccSrv)
-
 	mpesaStoreRep := mpesa_store.NewRepo()
 	mpesaStoreSrv := mpesa_store.NewService(mpesaStoreRep)
 
-	ipnSrv := ipn.NewService(paymentRep, transactionRep, merchantRep, mpesaStoreRep, earningAccRep, earningRep, earningAccSrv, earningSrv)
+	transactionRep := transaction.NewRepo()
+	transactionSrv := transaction.NewService(transactionRep, merchantRep, paymentRep, earningAccRep, earningRep, mpesaStoreRep, earningAccSrv)
+
+	ipnSrv := ipn.NewService(paymentRep, transactionRep, merchantRep, mpesaStoreRep, earningAccRep, earningRep, transactionSrv, earningAccSrv, earningSrv)
 	jobsSrv := jobs.NewService(earningSrv)
 
 	routes.IpnRouter(v1, ipnSrv)

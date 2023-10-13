@@ -2,34 +2,49 @@ package transaction
 
 import (
 	"cmp"
+	"fmt"
 	"merchants.sidooh/api/presenter"
 	"merchants.sidooh/pkg"
 	"merchants.sidooh/pkg/clients"
 	"merchants.sidooh/pkg/entities"
+	"merchants.sidooh/pkg/logger"
+	"merchants.sidooh/pkg/services/earning"
 	"merchants.sidooh/pkg/services/earning_account"
 	"merchants.sidooh/pkg/services/merchant"
+	"merchants.sidooh/pkg/services/mpesa_store"
 	"merchants.sidooh/pkg/services/payment"
+	"merchants.sidooh/utils"
 	"slices"
 	"strconv"
+	"strings"
 )
 
 type Service interface {
 	FetchTransactions(filters Filters) (*[]presenter.Transaction, error)
 	GetTransaction(id uint) (*presenter.Transaction, error)
 	GetTransactionsByMerchant(merchantId uint) (*[]presenter.Transaction, error)
-	CreateTransaction(transaction *entities.Transaction) (*entities.Transaction, error)
+	UpdateTransaction(transaction *entities.Transaction) (*presenter.Transaction, error)
+
 	PurchaseFloat(transaction *entities.Transaction, agent, store string) (*entities.Transaction, error)
 	WithdrawEarnings(transaction *entities.Transaction, source, destination, account string) (*entities.Transaction, error)
-	UpdateTransaction(transaction *entities.Transaction) (*presenter.Transaction, error)
+
+	CompleteTransaction(payment *entities.Payment, ipn *utils.Payment) error
 }
 
 type service struct {
-	paymentsApi          *clients.ApiClient
-	repository           Repository
+	repository Repository
+
 	merchantRepository   merchant.Repository
 	paymentRepository    payment.Repository
 	earningAccRepository earning_account.Repository
-	earningAccService    earning_account.Service
+	earningRepository    earning.Repository
+	mpesaStoreRepository mpesa_store.Repository
+
+	earningAccService earning_account.Service
+
+	accountsApi *clients.ApiClient
+	paymentsApi *clients.ApiClient
+	notifyApi   *clients.ApiClient
 }
 
 func (s *service) FetchTransactions(filters Filters) (*[]presenter.Transaction, error) {
@@ -58,6 +73,10 @@ func (s *service) GetTransactionsByMerchant(merchantId uint) (*[]presenter.Trans
 	return s.repository.ReadTransactionsByMerchant(merchantId)
 }
 
+func (s *service) UpdateTransaction(transaction *entities.Transaction) (*presenter.Transaction, error) {
+	return s.repository.UpdateTransaction(transaction)
+}
+
 func (s *service) PurchaseFloat(data *entities.Transaction, agent, store string) (tx *entities.Transaction, err error) {
 	merchant, err := s.merchantRepository.ReadMerchant(data.MerchantId)
 	if err != nil {
@@ -70,9 +89,24 @@ func (s *service) PurchaseFloat(data *entities.Transaction, agent, store string)
 	}
 
 	payment, err := s.paymentsApi.BuyMpesaFloat(merchant.AccountId, merchant.FloatAccountId, int(tx.Amount), agent, store)
+	fmt.Println("Payment", payment, err)
 	if err != nil {
 		tx.Status = "FAILED"
-		s.repository.UpdateTransaction(tx)
+		tx, err := s.repository.UpdateTransaction(tx)
+		if err != nil {
+			return nil, err
+		}
+
+		logger.ClientLog.Error("Error buying float", "tx", tx, "error", err)
+
+		go func() {
+			account, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
+
+			message := fmt.Sprintf("Sorry, KES%v Float could not be purchased", tx.Amount)
+
+			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+		}()
+
 		return nil, err
 	}
 
@@ -172,7 +206,7 @@ func (s *service) WithdrawEarnings(data *entities.Transaction, source, destinati
 		return nil, err
 	}
 
-	payment, err := s.paymentsApi.Withdraw(merchant.AccountId, 1, int(tx.Amount), destination, account)
+	paymentData, err := s.paymentsApi.Withdraw(merchant.AccountId, 1, int(tx.Amount), destination, account)
 	if err != nil {
 
 		// TODO: reverse earningTXs
@@ -189,24 +223,155 @@ func (s *service) WithdrawEarnings(data *entities.Transaction, source, destinati
 		return nil, err
 	}
 
-	s.paymentRepository.CreatePayment(&entities.Payment{
-		Amount: payment.Amount,
-		Status: payment.Status,
+	payment, err := s.paymentRepository.CreatePayment(&entities.Payment{
+		Amount: paymentData.Amount,
+		Status: "PENDING",
 		//Description:     payment.,
-		Destination:   payment.Destination,
+		Destination:   paymentData.Destination,
 		TransactionId: tx.Id,
-		PaymentId:     payment.Id,
+		PaymentId:     paymentData.Id,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	if paymentData.Status == "COMPLETED" {
+		err = s.CompleteTransaction(payment, paymentData)
+
+		return nil, err
+	}
 
 	return
 }
 
-func (s *service) CreateTransaction(transaction *entities.Transaction) (*entities.Transaction, error) {
-	return s.repository.CreateTransaction(transaction)
+func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Payment) error {
+	fmt.Println("Completing tx", payment, ipn)
+
+	payment.Status = ipn.Status
+	updatedPayment, err := s.paymentRepository.UpdatePayment(payment)
+	if err != nil {
+		return err
+	}
+
+	transaction, err := s.repository.ReadTransaction(updatedPayment.TransactionId)
+	mt, err := s.merchantRepository.ReadMerchant(transaction.MerchantId)
+
+	switch transaction.Product {
+	case "FLOAT":
+		err := s.computeCashback(mt, transaction, payment, ipn)
+		if err != nil {
+			return err
+		}
+
+	case "WITHDRAWAL":
+		account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
+		if err != nil {
+			return err
+		}
+
+		go func() {
+			destination := transaction.Destination
+			if strings.Split(transaction.Destination, "-")[0] == "FLOAT" {
+				destination = "VOUCHER"
+			}
+			message := fmt.Sprintf("KES%v Withdrawal to %s was successful", transaction.Amount, destination)
+			if payment.Status == "FAILED" {
+				message = fmt.Sprintf("Sorry, KES%v Withdrawal to %s could not be processed", transaction.Amount, destination)
+			}
+			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+		}()
+	}
+
+	// Update TX; after cashback?
+	transaction, err = s.UpdateTransaction(&entities.Transaction{
+		ModelID: entities.ModelID{Id: transaction.Id},
+		Status:  payment.Status,
+	})
+
+	return err
 }
 
-func (s *service) UpdateTransaction(transaction *entities.Transaction) (*presenter.Transaction, error) {
-	return s.repository.UpdateTransaction(transaction)
+func (s *service) computeCashback(mt *presenter.Merchant, tx *presenter.Transaction, payment *entities.Payment, data *utils.Payment) error {
+
+	// Compute cashback and commissions
+	// Compute cashback
+	cashback := float32(data.Charge) * .2
+
+	s.earningRepository.CreateEarning(&entities.Earning{
+		Amount:        cashback,
+		Type:          "SELF",
+		TransactionId: tx.Id,
+		AccountId:     mt.AccountId,
+	})
+
+	earningAcc, err := s.earningAccRepository.ReadAccountByAccountIdAndType(mt.AccountId, "CASHBACK")
+	if err != nil {
+		earningAcc, err = s.earningAccRepository.CreateAccount(&entities.EarningAccount{
+			Type:      "CASHBACK",
+			AccountId: mt.AccountId,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	s.earningAccService.CreditAccount(earningAcc.Id, cashback)
+	//s.earningAccountService.DebitAccount(earningAcc.AccountId, cashback) // Debit acc for savings
+
+	// Compute commissions
+	commission := float32(data.Charge) * .1
+
+	inviters, err := s.accountsApi.GetInviters(strconv.Itoa(int(mt.AccountId)))
+	if err != nil {
+		return err
+	}
+
+	if len(inviters) > 1 {
+		for _, inviter := range inviters[1:] {
+			s.earningRepository.CreateEarning(&entities.Earning{
+				Amount:        commission,
+				Type:          "INVITE",
+				TransactionId: tx.Id,
+				AccountId:     uint(inviter.Id),
+			})
+
+			earningAcc, err := s.earningAccRepository.ReadAccountByAccountIdAndType(uint(inviter.Id), "COMMISSION")
+			if err != nil {
+				earningAcc, err = s.earningAccRepository.CreateAccount(&entities.EarningAccount{
+					Type:      "COMMISSION",
+					AccountId: uint(inviter.Id),
+				})
+				if err != nil {
+					return err
+				}
+			}
+			s.earningAccService.CreditAccount(earningAcc.Id, commission)
+
+		}
+	}
+
+	account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		message := fmt.Sprintf("KES%v Float for %s purchased successfully", payment.Amount, strings.Join(strings.Split(data.Store, " ")[0:4], " "))
+		if payment.Status != "COMPLETED" {
+			message = fmt.Sprintf("Sorry, KES%v Float for %s could not be purchased", payment.Amount, tx.Destination)
+		}
+		s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+	}()
+
+	_, _ = s.mpesaStoreRepository.CreateStore(&entities.MpesaAgentStoreAccount{
+		Agent:      strings.Split(tx.Destination, "-")[0],
+		Store:      strings.Split(tx.Destination, "-")[1],
+		Name:       strings.Join(strings.Split(data.Store, " ")[0:4], " "),
+		MerchantId: mt.Id,
+	})
+
+	// TODO: add go func with code to debit savings and send to save platform
+
+	return err
 }
 
 func (s *service) getWithdrawalCharge(amount int) int {
@@ -224,6 +389,20 @@ func (s *service) getWithdrawalCharge(amount int) int {
 	return 0
 }
 
-func NewService(r Repository, merchantRepo merchant.Repository, paymentRepo payment.Repository, earningAccRepo earning_account.Repository, earningAccSrv earning_account.Service) Service {
-	return &service{repository: r, paymentsApi: clients.GetPaymentClient(), merchantRepository: merchantRepo, paymentRepository: paymentRepo, earningAccRepository: earningAccRepo, earningAccService: earningAccSrv}
+func NewService(r Repository, merchantRepo merchant.Repository, paymentRepo payment.Repository, earningAccRepo earning_account.Repository, earningRepo earning.Repository, mpesaStoreRepo mpesa_store.Repository, earningAccSrv earning_account.Service) Service {
+	return &service{
+		repository: r,
+
+		merchantRepository:   merchantRepo,
+		paymentRepository:    paymentRepo,
+		earningAccRepository: earningAccRepo,
+		earningRepository:    earningRepo,
+		mpesaStoreRepository: mpesaStoreRepo,
+
+		earningAccService: earningAccSrv,
+
+		accountsApi: clients.GetAccountClient(),
+		paymentsApi: clients.GetPaymentClient(),
+		notifyApi:   clients.GetNotifyClient(),
+	}
 }
