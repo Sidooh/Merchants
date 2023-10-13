@@ -53,6 +53,7 @@ func (s *service) SaveEarnings() error {
 		if _, ok := savedEarnings["completed"]; ok {
 			fmt.Println(ok)
 			//message += fmt.Sprintf("Processed earnings for %s'.count($completed)."  accounts\n");
+			// todo deduct earning account balances
 		}
 	} else {
 

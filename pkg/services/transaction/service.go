@@ -41,6 +41,7 @@ type service struct {
 	mpesaStoreRepository mpesa_store.Repository
 
 	earningAccService earning_account.Service
+	earningService    earning.Service
 
 	accountsApi *clients.ApiClient
 	paymentsApi *clients.ApiClient
@@ -370,6 +371,7 @@ func (s *service) computeCashback(mt *presenter.Merchant, tx *presenter.Transact
 	})
 
 	// TODO: add go func with code to debit savings and send to save platform
+	go s.earningService.SaveEarnings()
 
 	return err
 }
@@ -389,7 +391,7 @@ func (s *service) getWithdrawalCharge(amount int) int {
 	return 0
 }
 
-func NewService(r Repository, merchantRepo merchant.Repository, paymentRepo payment.Repository, earningAccRepo earning_account.Repository, earningRepo earning.Repository, mpesaStoreRepo mpesa_store.Repository, earningAccSrv earning_account.Service) Service {
+func NewService(r Repository, merchantRepo merchant.Repository, paymentRepo payment.Repository, earningAccRepo earning_account.Repository, earningRepo earning.Repository, mpesaStoreRepo mpesa_store.Repository, earningAccSrv earning_account.Service, earningSrv earning.Service) Service {
 	return &service{
 		repository: r,
 
@@ -400,6 +402,7 @@ func NewService(r Repository, merchantRepo merchant.Repository, paymentRepo paym
 		mpesaStoreRepository: mpesaStoreRepo,
 
 		earningAccService: earningAccSrv,
+		earningService:    earningSrv,
 
 		accountsApi: clients.GetAccountClient(),
 		paymentsApi: clients.GetPaymentClient(),
