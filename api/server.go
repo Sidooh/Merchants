@@ -100,7 +100,7 @@ func setHandlers(app *fiber.App) {
 	mpesaStoreSrv := mpesa_store.NewService(mpesaStoreRep)
 
 	transactionRep := transaction.NewRepo()
-	transactionSrv := transaction.NewService(transactionRep, merchantRep, paymentRep, earningAccRep, earningRep, mpesaStoreRep, earningAccSrv)
+	transactionSrv := transaction.NewService(transactionRep, merchantRep, paymentRep, earningAccRep, earningRep, mpesaStoreRep, earningAccSrv, earningSrv)
 
 	ipnSrv := ipn.NewService(paymentRep, transactionRep, merchantRep, mpesaStoreRep, earningAccRep, earningRep, transactionSrv, earningAccSrv, earningSrv)
 	jobsSrv := jobs.NewService(earningSrv)
