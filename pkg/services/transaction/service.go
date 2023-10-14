@@ -261,7 +261,8 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 	case "FLOAT":
 		if ipn.Status == "FAILED" {
 
-			date, _ := time.Parse("02/01/2006, 3:04 PM", transaction.CreatedAt)
+			dateTime, _ := time.Parse("2006-01-02 15:04:05", transaction.CreatedAt)
+			date := dateTime.Format("02/01/2006, 3:04 PM")
 
 			float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(mt.FloatAccountId)))
 
