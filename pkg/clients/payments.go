@@ -71,10 +71,10 @@ func (api *ApiClient) CreditFloatAccount(accountId, floatAccountId, amount, phon
 	return &apiResponse.Data, err
 }
 
-func (api *ApiClient) FetchFloatAccount(accountId int) (*FloatAccount, error) {
+func (api *ApiClient) FetchFloatAccount(id string) (*FloatAccount, error) {
 	var apiResponse = new(FloatAccountApiResponse)
 
-	var endpoint = "/float-accounts/" + strconv.Itoa(accountId)
+	var endpoint = "/float-accounts/" + id
 	err := api.NewRequest(http.MethodGet, endpoint, nil).Send(apiResponse)
 
 	return apiResponse.Data, err

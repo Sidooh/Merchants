@@ -17,6 +17,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Service interface {
@@ -252,28 +253,37 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 		return err
 	}
 
+	// TODO: convert this to return entity which means time conversion below can be removed
 	transaction, err := s.repository.ReadTransaction(updatedPayment.TransactionId)
 	mt, err := s.merchantRepository.ReadMerchant(transaction.MerchantId)
 
-	if ipn.Status == "FAILED" {
-		transaction, err = s.UpdateTransaction(&entities.Transaction{
-			ModelID: entities.ModelID{Id: transaction.Id},
-			Status:  payment.Status,
-		})
-
-		message := fmt.Sprintf("Sorry, your transaction could not be processed, please try again later.")
-		account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
-		if err != nil {
-			return err
-		}
-
-		s.notifyApi.SendSMS("ERROR", account.Phone, message)
-
-		return nil
-	}
-
 	switch transaction.Product {
 	case "FLOAT":
+		if ipn.Status == "FAILED" {
+
+			date, _ := time.Parse("02/01/2006, 3:04 PM", transaction.CreatedAt)
+
+			float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(mt.FloatAccountId)))
+
+			message := fmt.Sprintf("Hi, we have added KES%v to your voucher account "+
+				"because we could not complete your"+
+				" KES%v float purchase for %s on %v. New voucher balance is KES%v.",
+				transaction.Amount, transaction.Amount, transaction.Destination, date, float.Balance)
+			account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
+			if err != nil {
+				return err
+			}
+
+			s.notifyApi.SendSMS("ERROR", account.Phone, message)
+
+			transaction, err = s.UpdateTransaction(&entities.Transaction{
+				ModelID: entities.ModelID{Id: transaction.Id},
+				Status:  payment.Status,
+			})
+
+			return nil
+		}
+
 		err := s.computeCashback(mt, transaction, payment, ipn)
 		if err != nil {
 			return err
