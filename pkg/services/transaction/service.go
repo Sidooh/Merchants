@@ -246,8 +246,6 @@ func (s *service) WithdrawEarnings(data *entities.Transaction, source, destinati
 }
 
 func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Payment) error {
-	fmt.Println("Completing tx", payment, ipn)
-
 	payment.Status = ipn.Status
 	updatedPayment, err := s.paymentRepository.UpdatePayment(payment)
 	if err != nil {
@@ -293,7 +291,6 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 }
 
 func (s *service) computeCashback(mt *presenter.Merchant, tx *presenter.Transaction, payment *entities.Payment, data *utils.Payment) error {
-
 	// Compute cashback and commissions
 	// Compute cashback
 	cashback := float32(data.Charge) * .2
