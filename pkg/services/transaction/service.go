@@ -255,6 +255,23 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 	transaction, err := s.repository.ReadTransaction(updatedPayment.TransactionId)
 	mt, err := s.merchantRepository.ReadMerchant(transaction.MerchantId)
 
+	if ipn.Status == "FAILED" {
+		transaction, err = s.UpdateTransaction(&entities.Transaction{
+			ModelID: entities.ModelID{Id: transaction.Id},
+			Status:  payment.Status,
+		})
+
+		message := fmt.Sprintf("Sorry, your transaction could not be processed, please try again later.")
+		account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
+		if err != nil {
+			return err
+		}
+
+		s.notifyApi.SendSMS("ERROR", account.Phone, message)
+
+		return nil
+	}
+
 	switch transaction.Product {
 	case "FLOAT":
 		err := s.computeCashback(mt, transaction, payment, ipn)
