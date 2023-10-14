@@ -136,7 +136,7 @@ func WithdrawEarnings(service transaction.Service) fiber.Handler {
 
 		fetched, err := service.WithdrawEarnings(&entities.Transaction{
 			Amount:      float32(request.Amount),
-			Description: "Earnings Withdrawal",
+			Description: "Earnings Withdrawal - " + request.Source,
 			Destination: &dest,
 			MerchantId:  uint(id),
 			Product:     "WITHDRAWAL",
