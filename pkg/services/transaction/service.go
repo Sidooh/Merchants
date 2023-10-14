@@ -387,7 +387,13 @@ func (s *service) computeCashback(mt *presenter.Merchant, tx *entities.Transacti
 	}
 
 	go func() {
-		message := fmt.Sprintf("KES%v Float for %s purchased successfully", payment.Amount, strings.Join(strings.Split(data.Store, " ")[0:4], " "))
+		date := tx.CreatedAt.Format("02/01/2006, 3:04 PM")
+
+		message := fmt.Sprintf("You have purchased KES%v float for %s on %s using Voucher. Cost KES%v. "+
+			"You have received KES%v cashback.",
+			payment.Amount,
+			strings.Join(strings.Split(data.Store, " ")[0:4], " "), date, data.Charge, cashback)
+		//message := fmt.Sprintf("KES%v Float for %s purchased successfully", payment.Amount, strings.Join(strings.Split(data.Store, " ")[0:4], " "))
 		if payment.Status != "COMPLETED" {
 			message = fmt.Sprintf("Sorry, KES%v Float for %s could not be purchased", payment.Amount, tx.Destination)
 		}
