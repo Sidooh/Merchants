@@ -11,9 +11,9 @@ import (
 type Repository interface {
 	CreateTransaction(transaction *entities.Transaction) (*entities.Transaction, error)
 	ReadTransactions(filters Filters) (*[]presenter.Transaction, error)
-	ReadTransaction(id uint) (*presenter.Transaction, error)
+	ReadTransaction(id uint) (*entities.Transaction, error)
 	ReadTransactionsByMerchant(merchantId uint) (*[]presenter.Transaction, error)
-	UpdateTransaction(transaction *entities.Transaction) (*presenter.Transaction, error)
+	UpdateTransaction(transaction *entities.Transaction) (*entities.Transaction, error)
 }
 type repository struct {
 }
@@ -53,14 +53,9 @@ func (r *repository) ReadTransactions(filters Filters) (transactions *[]presente
 	return
 }
 
-func (r *repository) ReadTransaction(id uint) (*presenter.Transaction, error) {
-	var transaction presenter.Transaction
-	result := datastore.DB.First(&transaction, id)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-
-	return &transaction, nil
+func (r *repository) ReadTransaction(id uint) (transaction *entities.Transaction, err error) {
+	err = datastore.DB.First(&transaction, id).Error
+	return
 }
 
 func (r *repository) ReadTransactionsByMerchant(merchantId uint) (transaction *[]presenter.Transaction, err error) {
@@ -68,7 +63,7 @@ func (r *repository) ReadTransactionsByMerchant(merchantId uint) (transaction *[
 	return
 }
 
-func (r *repository) UpdateTransaction(transaction *entities.Transaction) (*presenter.Transaction, error) {
+func (r *repository) UpdateTransaction(transaction *entities.Transaction) (*entities.Transaction, error) {
 	result := datastore.DB.Updates(transaction)
 	if result.Error != nil {
 		return nil, result.Error

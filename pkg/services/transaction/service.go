@@ -17,14 +17,13 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type Service interface {
 	FetchTransactions(filters Filters) (*[]presenter.Transaction, error)
 	GetTransaction(id uint) (*presenter.Transaction, error)
 	GetTransactionsByMerchant(merchantId uint) (*[]presenter.Transaction, error)
-	UpdateTransaction(transaction *entities.Transaction) (*presenter.Transaction, error)
+	UpdateTransaction(transaction *entities.Transaction) (*entities.Transaction, error)
 
 	PurchaseFloat(transaction *entities.Transaction, agent, store string) (*entities.Transaction, error)
 	WithdrawEarnings(transaction *entities.Transaction, source, destination, account string) (*entities.Transaction, error)
@@ -67,15 +66,22 @@ func (s *service) FetchTransactions(filters Filters) (*[]presenter.Transaction, 
 	return s.repository.ReadTransactions(filters)
 }
 
-func (s *service) GetTransaction(id uint) (*presenter.Transaction, error) {
-	return s.repository.ReadTransaction(id)
+func (s *service) GetTransaction(id uint) (results *presenter.Transaction, err error) {
+	tx, err := s.repository.ReadTransaction(id)
+	if err != nil {
+		return nil, err
+	}
+
+	utils.ConvertStruct(tx, &results)
+
+	return
 }
 
 func (s *service) GetTransactionsByMerchant(merchantId uint) (*[]presenter.Transaction, error) {
 	return s.repository.ReadTransactionsByMerchant(merchantId)
 }
 
-func (s *service) UpdateTransaction(transaction *entities.Transaction) (*presenter.Transaction, error) {
+func (s *service) UpdateTransaction(transaction *entities.Transaction) (*entities.Transaction, error) {
 	return s.repository.UpdateTransaction(transaction)
 }
 
@@ -261,15 +267,15 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 	case "FLOAT":
 		if ipn.Status == "FAILED" {
 
-			dateTime, _ := time.Parse("2006-01-02 15:04:05", transaction.CreatedAt)
-			date := dateTime.Format("02/01/2006, 3:04 PM")
+			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
 
 			float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(mt.FloatAccountId)))
 
 			message := fmt.Sprintf("Hi, we have added KES%v to your voucher account "+
 				"because we could not complete your"+
-				" KES%v float purchase for %s on %v. New voucher balance is KES%v.",
-				transaction.Amount, transaction.Amount, transaction.Destination, date, float.Balance)
+				" KES%v float purchase for %s on %s. New voucher balance is KES%v.",
+				transaction.Amount, transaction.Amount, *transaction.Destination, date, float.Balance)
+
 			account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
 			if err != nil {
 				return err
@@ -297,8 +303,8 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 		}
 
 		go func() {
-			destination := transaction.Destination
-			if strings.Split(transaction.Destination, "-")[0] == "FLOAT" {
+			destination := *transaction.Destination
+			if strings.Split(*transaction.Destination, "-")[0] == "FLOAT" {
 				destination = "VOUCHER"
 			}
 			message := fmt.Sprintf("KES%v Withdrawal to %s was successful", transaction.Amount, destination)
@@ -318,7 +324,7 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 	return err
 }
 
-func (s *service) computeCashback(mt *presenter.Merchant, tx *presenter.Transaction, payment *entities.Payment, data *utils.Payment) error {
+func (s *service) computeCashback(mt *presenter.Merchant, tx *entities.Transaction, payment *entities.Payment, data *utils.Payment) error {
 	// Compute cashback and commissions
 	// Compute cashback
 	cashback := float32(data.Charge) * .2
@@ -389,8 +395,8 @@ func (s *service) computeCashback(mt *presenter.Merchant, tx *presenter.Transact
 	}()
 
 	_, _ = s.mpesaStoreRepository.CreateStore(&entities.MpesaAgentStoreAccount{
-		Agent:      strings.Split(tx.Destination, "-")[0],
-		Store:      strings.Split(tx.Destination, "-")[1],
+		Agent:      strings.Split(*tx.Destination, "-")[0],
+		Store:      strings.Split(*tx.Destination, "-")[1],
 		Name:       strings.Join(strings.Split(data.Store, " ")[0:4], " "),
 		MerchantId: mt.Id,
 	})
