@@ -303,11 +303,15 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 		}
 
 		go func() {
+			earningType := strings.Split(transaction.Description, " - ")[1]
+			earningAcc, _ := s.earningAccRepository.ReadAccountByAccountIdAndType(mt.AccountId, earningType)
 			destination := *transaction.Destination
 			if strings.Split(*transaction.Destination, "-")[0] == "FLOAT" {
 				destination = "VOUCHER"
 			}
-			message := fmt.Sprintf("KES%v Withdrawal to %s was successful", transaction.Amount, destination)
+			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
+			message := fmt.Sprintf("Withdrawal of KES%v from %s to %s on %s was successful. Cost KES%v. New %s Balance is KES%v",
+				transaction.Amount, earningAcc.Type, destination, date, ipn.Charge, earningAcc.Type, earningAcc.Amount)
 			if payment.Status == "FAILED" {
 				message = fmt.Sprintf("Sorry, KES%v Withdrawal to %s could not be processed", transaction.Amount, destination)
 			}

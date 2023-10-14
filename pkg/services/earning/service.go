@@ -42,8 +42,7 @@ func (s *service) SaveEarnings() error {
 		investments = append(investments, investment)
 	}
 
-	//message := "STATUS:SAVINGS\n\n"
-
+	// TODO
 	if len(*earnings) > 0 {
 		savedEarnings, err := s.savingsApi.SaveEarnings(investments)
 		if err != nil {
@@ -59,10 +58,10 @@ func (s *service) SaveEarnings() error {
 
 	}
 
-	//for _, earning := range *earnings {
-	//	earning.Status = "COMPLETED"
-	//	s.repository.UpdateEarning(&earning)
-	//}
+	for _, earning := range *earnings {
+		earning.Status = "COMPLETED"
+		s.repository.UpdateEarning(&earning)
+	}
 
 	return err
 }
