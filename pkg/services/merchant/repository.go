@@ -1,7 +1,6 @@
 package merchant
 
 import (
-	"fmt"
 	"merchants.sidooh/api/presenter"
 	"merchants.sidooh/pkg/datastore"
 	"merchants.sidooh/pkg/entities"
@@ -10,11 +9,20 @@ import (
 // Repository interface allows us to access the CRUD Operations here.
 type Repository interface {
 	CreateMerchant(merchant *entities.Merchant) (*entities.Merchant, error)
-	ReadMerchants() (*[]presenter.Merchant, error)
+	ReadMerchants(filters Filters) (*[]presenter.Merchant, error)
 	ReadMerchant(id uint) (*presenter.Merchant, error)
+	ReadMerchantByAccount(accountId uint) (*presenter.Merchant, error)
+	ReadMerchantByCode(code uint) (*presenter.Merchant, error)
+	ReadMerchantByIdNumber(idNumber string) (*presenter.Merchant, error)
 	UpdateMerchant(merchant *entities.Merchant) (*presenter.Merchant, error)
 }
 type repository struct {
+}
+
+type Filters struct {
+	Columns []string
+
+	Accounts []string
 }
 
 func (r *repository) CreateMerchant(merchant *entities.Merchant) (*entities.Merchant, error) {
@@ -26,34 +34,38 @@ func (r *repository) CreateMerchant(merchant *entities.Merchant) (*entities.Merc
 	return merchant, nil
 }
 
-func (r *repository) ReadMerchants() (*[]presenter.Merchant, error) {
-	var merchants []presenter.Merchant
-	result := datastore.DB.Find(&merchants)
-	if result.Error != nil {
-		return nil, result.Error
+func (r *repository) ReadMerchants(filters Filters) (merchants *[]presenter.Merchant, err error) {
+	query := datastore.DB.Order("id desc")
+	if len(filters.Columns) > 0 {
+		query = query.Select(filters.Columns)
+	}
+	if len(filters.Accounts) > 0 {
+		query = query.Where("account_id in ?", filters.Accounts)
 	}
 
-	return &merchants, nil
+	err = query.Find(&merchants).Error
+
+	return
 }
 
-func (r *repository) ReadMerchant(id uint) (*presenter.Merchant, error) {
-	var merchant presenter.Merchant
-	result := datastore.DB.First(&merchant, id)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-
-	return &merchant, nil
+func (r *repository) ReadMerchant(id uint) (merchant *presenter.Merchant, err error) {
+	err = datastore.DB.First(&merchant, id).Error
+	return
 }
 
-func (r *repository) ReadMerchantByEmailOrPhone(email string, phone string) (*presenter.Merchant, error) {
-	var merchant presenter.Merchant
-	result := datastore.DB.Where("email", email).Or("phone LIKE ?", fmt.Sprintf("%%%s%%", phone)).First(&merchant)
-	if result.Error != nil {
-		return nil, result.Error
-	}
+func (r *repository) ReadMerchantByAccount(accountId uint) (merchant *presenter.Merchant, err error) {
+	err = datastore.DB.Where("account_id", accountId).First(&merchant).Error
+	return
+}
 
-	return &merchant, nil
+func (r *repository) ReadMerchantByCode(code uint) (merchant *presenter.Merchant, err error) {
+	err = datastore.DB.Where("code", code).First(&merchant).Error
+	return
+}
+
+func (r *repository) ReadMerchantByIdNumber(idNumber string) (merchant *presenter.Merchant, err error) {
+	err = datastore.DB.Where("id_number", idNumber).First(&merchant).Error
+	return
 }
 
 func (r *repository) UpdateMerchant(merchant *entities.Merchant) (*presenter.Merchant, error) {

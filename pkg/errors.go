@@ -5,6 +5,8 @@ import "errors"
 var (
 	ErrInvalidMerchant = errors.New("merchant details are invalid")
 
+	ErrInsufficientBalance = errors.New("insufficient balance")
+
 	ErrInvalidUser = errors.New("user details are invalid")
 
 	ErrInvalidAccount = errors.New("account details are invalid")

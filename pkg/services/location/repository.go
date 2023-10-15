@@ -21,6 +21,7 @@ func (r *repository) ReadCounties() (counties *[]presenter.County, err error) {
 	err = datastore.DB.Model(&entities.Location{}).
 		Select("county_id", "county").
 		Group("county_id").
+		Group("county"). // needed for mysql aggregation in sql_mode=only_full_group_by
 		Find(&counties).
 		Error
 	return
@@ -31,6 +32,7 @@ func (r *repository) ReadSubCounties(county int) (subCounties *[]presenter.SubCo
 		Where("county_id", county).
 		Select("sub_county_id", "sub_county").
 		Group("sub_county_id").
+		Group("sub_county").
 		Find(&subCounties).
 		Error
 	return
@@ -41,6 +43,7 @@ func (r *repository) ReadWards(subCounty int) (wards *[]presenter.Ward, err erro
 		Where("sub_county_id", subCounty).
 		Select("ward_id", "ward").
 		Group("ward_id").
+		Group("ward").
 		Find(&wards).
 		Error
 	return
@@ -51,6 +54,7 @@ func (r *repository) ReadLandmarks(ward int) (landmarks *[]presenter.Landmark, e
 		Where("ward_id", ward).
 		Select("landmark_id", "landmark").
 		Group("landmark_id").
+		Group("landmark").
 		Find(&landmarks).
 		Error
 	return

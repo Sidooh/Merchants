@@ -63,6 +63,12 @@ func Init() {
 		err := gormDb.AutoMigrate(
 			&entities.Merchant{},
 			&entities.Location{},
+			&entities.Transaction{},
+			&entities.Payment{},
+			&entities.MpesaAgentStoreAccount{},
+			&entities.EarningAccount{},
+			&entities.Earning{},
+			&entities.EarningAccountTransaction{},
 		)
 		if err != nil {
 			logrus.Error(err)

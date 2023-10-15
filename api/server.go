@@ -17,8 +17,16 @@ import (
 	"merchants.sidooh/api/routes"
 	"merchants.sidooh/pkg/clients"
 	"merchants.sidooh/pkg/logger"
+	"merchants.sidooh/pkg/services/earning"
+	"merchants.sidooh/pkg/services/earning_account"
+	"merchants.sidooh/pkg/services/earning_account_transaction"
+	"merchants.sidooh/pkg/services/ipn"
+	"merchants.sidooh/pkg/services/jobs"
 	"merchants.sidooh/pkg/services/location"
 	"merchants.sidooh/pkg/services/merchant"
+	"merchants.sidooh/pkg/services/mpesa_store"
+	"merchants.sidooh/pkg/services/payment"
+	"merchants.sidooh/pkg/services/transaction"
 	"merchants.sidooh/utils"
 	"time"
 )
@@ -69,12 +77,36 @@ func setHandlers(app *fiber.App) {
 	clients.InitAccountClient()
 	clients.InitPaymentClient()
 	clients.InitNotifyClient()
+	clients.InitSavingsClient()
 
 	merchantRep := merchant.NewRepo()
 	merchantSrv := merchant.NewService(merchantRep)
 
 	locationRep := location.NewRepo()
 	locationSrv := location.NewService(locationRep)
+
+	paymentRep := payment.NewRepo()
+	//paymentSrv := payment.NewService(paymentRep)
+
+	earningRep := earning.NewRepo()
+	earningSrv := earning.NewService(earningRep)
+
+	earningAccTxRep := earning_account_transaction.NewRepo()
+
+	earningAccRep := earning_account.NewRepo()
+	earningAccSrv := earning_account.NewService(earningAccRep, earningAccTxRep)
+
+	mpesaStoreRep := mpesa_store.NewRepo()
+	mpesaStoreSrv := mpesa_store.NewService(mpesaStoreRep)
+
+	transactionRep := transaction.NewRepo()
+	transactionSrv := transaction.NewService(transactionRep, merchantRep, paymentRep, earningAccRep, earningRep, mpesaStoreRep, earningAccSrv, earningSrv)
+
+	ipnSrv := ipn.NewService(paymentRep, transactionRep, merchantRep, mpesaStoreRep, earningAccRep, earningRep, transactionSrv, earningAccSrv, earningSrv)
+	jobsSrv := jobs.NewService(earningSrv)
+
+	routes.IpnRouter(v1, ipnSrv)
+	routes.JobsRouter(v1, jobsSrv)
 
 	app.Use(jwt.New(jwt.Config{
 		Secret: viper.GetString("JWT_KEY"),
@@ -83,6 +115,9 @@ func setHandlers(app *fiber.App) {
 
 	routes.MerchantRouter(v1, merchantSrv)
 	routes.LocationRouter(v1, locationSrv)
+	routes.TransactionRouter(v1, transactionSrv)
+	routes.MpesaStoreRouter(v1, mpesaStoreSrv)
+	routes.EarningAccountRouter(v1, earningAccSrv)
 }
 
 func Server() *fiber.App {
@@ -120,9 +155,8 @@ func Server() *fiber.App {
 	setHealthCheckRoutes(app)
 	setHandlers(app)
 
-	//for _, route := range app.GetRoutes() {
-	//	fmt.Println(route.Name, route.Method, route.Path, route.Params)
-	//}
+	//data, _ := json.MarshalIndent(app.GetRoutes(true), "", "  ")
+	//fmt.Print(string(data))
 
 	return app
 }

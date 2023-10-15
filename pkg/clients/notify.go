@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/spf13/viper"
 	"net/http"
+	"time"
 )
 
 var notifyClient *ApiClient
@@ -12,6 +13,7 @@ var notifyClient *ApiClient
 func InitNotifyClient() {
 	apiUrl := viper.GetString("SIDOOH_NOTIFY_API_URL")
 	notifyClient = New(apiUrl)
+	notifyClient.client = &http.Client{Timeout: 60 * time.Second}
 }
 
 func GetNotifyClient() *ApiClient {

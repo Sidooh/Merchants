@@ -79,6 +79,10 @@ func HandleErrorResponse(ctx *fiber.Ctx, err error) error {
 		return ctx.Status(http.StatusUnauthorized).JSON(UnauthorizedErrorResponse())
 	}
 
+	if errors.Is(err, pkg.ErrInsufficientBalance) {
+		return ctx.Status(http.StatusUnprocessableEntity).JSON(ErrorResponse("insufficient balance", nil))
+	}
+
 	// TODO: Handle simple one line errors
 	if errors.Is(err, pkg.ErrInvalidMerchant) ||
 		errors.Is(err, pkg.ErrInvalidUser) ||

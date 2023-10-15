@@ -19,7 +19,7 @@ func Init() {
 		if logger == "GCP" {
 			//	ClientLog.SetFormatter(NewGCEFormatter(false))
 		} else {
-			ClientLog = slog.New(slog.NewJSONHandler(utils.GetLogFile("client.log"), nil)).WithGroup("ClientLog")
+			ClientLog = slog.New(slog.NewJSONHandler(utils.GetLogFile("client.log"), nil))
 		}
 	}
 }
