@@ -4,13 +4,14 @@ go 1.21
 
 require (
 	github.com/go-playground/validator v9.31.0+incompatible
-	github.com/gofiber/fiber/v2 v2.49.1
+	github.com/gofiber/fiber/v2 v2.49.2
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/jellydator/ttlcache/v3 v3.1.0
 	github.com/json-iterator/go v1.1.12
 	github.com/sirupsen/logrus v1.2.0
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.3
+	gorm.io/datatypes v1.2.0
 	gorm.io/driver/mysql v1.5.1
 	gorm.io/driver/sqlite v1.5.3
 	gorm.io/gorm v1.25.4
@@ -59,5 +60,4 @@ require (
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/datatypes v1.2.0 // indirect
 )
