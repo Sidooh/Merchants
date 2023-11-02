@@ -36,13 +36,14 @@ type FloatAccountTransactionsApiResponse struct {
 // FLOAT ACCOUNTS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func (api *ApiClient) CreateFloatAccount(merchantId, accountId int) (*FloatAccount, error) {
+func (api *ApiClient) CreateFloatAccount(merchantId, accountId, code int) (*FloatAccount, error) {
 	var apiResponse = new(FloatAccountApiResponse)
 
 	jsonData, err := json.Marshal(map[string]string{
-		"initiator":  "MERCHANT",
-		"reference":  strconv.Itoa(merchantId),
-		"account_id": strconv.Itoa(accountId),
+		"initiator":   "MERCHANT",
+		"reference":   strconv.Itoa(merchantId),
+		"description": strconv.Itoa(code),
+		"account_id":  strconv.Itoa(accountId),
 	})
 	dataBytes := bytes.NewBuffer(jsonData)
 

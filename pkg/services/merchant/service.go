@@ -6,6 +6,7 @@ import (
 	"merchants.sidooh/pkg/clients"
 	"merchants.sidooh/pkg/entities"
 	"merchants.sidooh/utils"
+	"slices"
 	"strconv"
 )
 
@@ -64,10 +65,20 @@ func (s *service) UpdateMerchantKYB(data *entities.Merchant) (merchant *presente
 
 	// TODO: Generate code and assign float account
 	// TODO: Fix this to ensure uniqueness - get all codes and generate while comparing... or generate and check loop
+	existingCodes := s.repository.GetMerchantCodes()
 	code := uint(utils.RandomIntBetween(10000, 99999))
+	isUnique := false
+	for !isUnique {
+		if slices.Contains[[]uint, uint](existingCodes, code) {
+			code = uint(utils.RandomIntBetween(10000, 99999))
+		} else {
+			isUnique = true
+		}
+	}
+
 	data.Code = &code
 
-	floatAccount, err := s.paymentsApi.CreateFloatAccount(int(merchant.Id), int(merchant.AccountId))
+	floatAccount, err := s.paymentsApi.CreateFloatAccount(int(merchant.Id), int(merchant.AccountId), int(code))
 	if err != nil {
 		return nil, pkg.ErrServerError
 	}

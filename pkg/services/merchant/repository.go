@@ -15,6 +15,7 @@ type Repository interface {
 	ReadMerchantByCode(code uint) (*presenter.Merchant, error)
 	ReadMerchantByIdNumber(idNumber string) (*presenter.Merchant, error)
 	UpdateMerchant(merchant *entities.Merchant) (*presenter.Merchant, error)
+	GetMerchantCodes() []uint
 }
 type repository struct {
 }
@@ -75,6 +76,11 @@ func (r *repository) UpdateMerchant(merchant *entities.Merchant) (*presenter.Mer
 	}
 
 	return r.ReadMerchant(merchant.Id)
+}
+
+func (r *repository) GetMerchantCodes() (codes []uint) {
+	_ = datastore.DB.Select("code").Order("code").Find(&codes).Error
+	return
 }
 
 // NewRepo is the single instance repo that is being created.
