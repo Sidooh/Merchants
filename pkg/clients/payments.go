@@ -15,7 +15,7 @@ var paymentClient *ApiClient
 func InitPaymentClient() {
 	apiUrl := viper.GetString("SIDOOH_PAYMENTS_API_URL")
 	paymentClient = New(apiUrl)
-	paymentClient.client = &http.Client{Timeout: 60 * time.Second}
+	paymentClient.client = &http.Client{Timeout: 120 * time.Second}
 }
 
 func GetPaymentClient() *ApiClient {

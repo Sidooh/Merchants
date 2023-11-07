@@ -97,8 +97,8 @@ func (s *service) PurchaseFloat(data *entities.Transaction, agent, store string)
 	}
 
 	payment, err := s.paymentsApi.BuyMpesaFloat(merchant.AccountId, merchant.FloatAccountId, int(tx.Amount), agent, store)
-	fmt.Println("Payment", payment, err)
 	if err != nil {
+		// TODO: check on connect timeout and exclude from failed tx...
 		tx.Status = "FAILED"
 		tx, err := s.repository.UpdateTransaction(tx)
 		if err != nil {
