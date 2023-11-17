@@ -507,10 +507,10 @@ func (s *service) computeMpesaWithdrawalCashback(mt *presenter.Merchant, tx *ent
 		AccountId:     mt.AccountId,
 	})
 
-	earningAcc, err := s.earningAccRepository.ReadAccountByAccountIdAndType(mt.AccountId, "CASHBACK")
+	earningAcc, err := s.earningAccRepository.ReadAccountByAccountIdAndType(mt.AccountId, "COMMISSION")
 	if err != nil {
 		earningAcc, err = s.earningAccRepository.CreateAccount(&entities.EarningAccount{
-			Type:      "CASHBACK",
+			Type:      "COMMISSION",
 			AccountId: mt.AccountId,
 		})
 		if err != nil {
@@ -562,9 +562,9 @@ func (s *service) computeMpesaWithdrawalCashback(mt *presenter.Merchant, tx *ent
 
 		date := tx.CreatedAt.Format("02/01/2006, 3:04 PM")
 
-		message := fmt.Sprintf("KES%v mpesa withdrawal for %s on %s has been processed successfully. "+
-			"Your voucher balance is KES%v. You have received KES%v cashback.",
-			payment.Amount, *tx.Destination, date, float.Balance, cashback)
+		message := fmt.Sprintf("KES%v cash withdrawal by %s on %s was successful. "+
+			"New voucher balance KES%v. Commission earned KES%v. Commission saved KES%v",
+			payment.Amount, *tx.Destination, date, float.Balance, cashback, cashback*.2)
 		//message := fmt.Sprintf("KES%v Float for %s purchased successfully", payment.Amount, strings.Join(strings.Split(data.Store, " ")[0:4], " "))
 		//if payment.Status != "COMPLETED" {
 		//	message = fmt.Sprintf("Sorry, KES%v Float for %s could not be purchased", payment.Amount, tx.Destination)
