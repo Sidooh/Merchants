@@ -26,6 +26,7 @@ type Service interface {
 	UpdateTransaction(transaction *entities.Transaction) (*entities.Transaction, error)
 
 	PurchaseFloat(transaction *entities.Transaction, agent, store string) (*entities.Transaction, error)
+	MpesaWithdrawal(transaction *entities.Transaction) (*entities.Transaction, error)
 	WithdrawEarnings(transaction *entities.Transaction, source, destination, account string) (*entities.Transaction, error)
 
 	CompleteTransaction(payment *entities.Payment, ipn *utils.Payment) error
@@ -120,6 +121,53 @@ func (s *service) PurchaseFloat(data *entities.Transaction, agent, store string)
 
 	s.paymentRepository.CreatePayment(&entities.Payment{
 		Amount: payment.Amount,
+		Charge: float32(payment.Charge),
+		Status: payment.Status,
+		//Description:     payment.,
+		Destination:   payment.Destination,
+		TransactionId: tx.Id,
+		PaymentId:     payment.Id,
+	})
+
+	return
+}
+
+func (s *service) MpesaWithdrawal(data *entities.Transaction) (tx *entities.Transaction, err error) {
+	merchant, err := s.merchantRepository.ReadMerchant(data.MerchantId)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err = s.repository.CreateTransaction(data)
+	if err != nil {
+		return nil, err
+	}
+
+	payment, err := s.paymentsApi.MpesaWithdraw(merchant.AccountId, merchant.FloatAccountId, int(tx.Amount), *tx.Destination)
+	if err != nil {
+		// TODO: check on connect timeout and exclude from failed tx...
+		tx.Status = "FAILED"
+		tx, err := s.repository.UpdateTransaction(tx)
+		if err != nil {
+			return nil, err
+		}
+
+		logger.ClientLog.Error("Error withdrawing mpesa", "tx", tx, "error", err)
+
+		go func() {
+			account, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
+
+			message := fmt.Sprintf("Sorry, KES%v Withdrawal could not be processed", tx.Amount)
+
+			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+		}()
+
+		return nil, err
+	}
+
+	s.paymentRepository.CreatePayment(&entities.Payment{
+		Amount: payment.Amount,
+		Charge: float32(payment.Charge),
 		Status: payment.Status,
 		//Description:     payment.,
 		Destination:   payment.Destination,
@@ -233,6 +281,7 @@ func (s *service) WithdrawEarnings(data *entities.Transaction, source, destinati
 
 	payment, err := s.paymentRepository.CreatePayment(&entities.Payment{
 		Amount: paymentData.Amount,
+		Charge: float32(paymentData.Charge),
 		Status: "PENDING",
 		//Description:     payment.,
 		Destination:   paymentData.Destination,
@@ -264,6 +313,35 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 	mt, err := s.merchantRepository.ReadMerchant(transaction.MerchantId)
 
 	switch transaction.Product {
+	case "MPESA_WITHDRAWAL":
+		if ipn.Status == "FAILED" {
+
+			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
+
+			message := fmt.Sprintf("Hi, we could not complete your"+
+				" KES%v mpesa withdrawal for %s on %s. Please try again later.",
+				transaction.Amount, *transaction.Destination, date)
+
+			account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
+			if err != nil {
+				return err
+			}
+
+			s.notifyApi.SendSMS("ERROR", account.Phone, message)
+
+			transaction, err = s.UpdateTransaction(&entities.Transaction{
+				ModelID: entities.ModelID{Id: transaction.Id},
+				Status:  payment.Status,
+			})
+
+			return nil
+		}
+
+		err := s.computeMpesaWithdrawalCashback(mt, transaction, payment, ipn)
+		if err != nil {
+			return err
+		}
+
 	case "FLOAT":
 		if ipn.Status == "FAILED" {
 
@@ -417,6 +495,89 @@ func (s *service) computeCashback(mt *presenter.Merchant, tx *entities.Transacti
 	return err
 }
 
+func (s *service) computeMpesaWithdrawalCashback(mt *presenter.Merchant, tx *entities.Transaction, payment *entities.Payment, data *utils.Payment) error {
+	// Compute cashback and commissions
+	// Compute cashback
+	cashback := float32(s.getMpesaWithdrawalCashback(int(tx.Amount)))
+
+	s.earningRepository.CreateEarning(&entities.Earning{
+		Amount:        cashback,
+		Type:          "SELF",
+		TransactionId: tx.Id,
+		AccountId:     mt.AccountId,
+	})
+
+	earningAcc, err := s.earningAccRepository.ReadAccountByAccountIdAndType(mt.AccountId, "CASHBACK")
+	if err != nil {
+		earningAcc, err = s.earningAccRepository.CreateAccount(&entities.EarningAccount{
+			Type:      "CASHBACK",
+			AccountId: mt.AccountId,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	s.earningAccService.CreditAccount(earningAcc.Id, cashback)
+	s.earningAccService.DebitAccount(earningAcc.Id, cashback*.2) // Debit acc for savings
+
+	// Compute commissions
+	commission := float32(s.getMpesaWithdrawalCommission(int(tx.Amount)))
+
+	inviters, err := s.accountsApi.GetInviters(strconv.Itoa(int(mt.AccountId)))
+	if err != nil {
+		return err
+	}
+
+	if len(inviters) > 1 {
+		for _, inviter := range inviters[1:] {
+			s.earningRepository.CreateEarning(&entities.Earning{
+				Amount:        commission,
+				Type:          "INVITE",
+				TransactionId: tx.Id,
+				AccountId:     uint(inviter.Id),
+			})
+
+			earningAcc, err := s.earningAccRepository.ReadAccountByAccountIdAndType(uint(inviter.Id), "COMMISSION")
+			if err != nil {
+				earningAcc, err = s.earningAccRepository.CreateAccount(&entities.EarningAccount{
+					Type:      "COMMISSION",
+					AccountId: uint(inviter.Id),
+				})
+				if err != nil {
+					return err
+				}
+			}
+			s.earningAccService.CreditAccount(earningAcc.Id, commission)
+			s.earningAccService.DebitAccount(earningAcc.Id, commission*.2) // Debit acc for savings
+		}
+	}
+
+	account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(mt.FloatAccountId)))
+
+		date := tx.CreatedAt.Format("02/01/2006, 3:04 PM")
+
+		message := fmt.Sprintf("KES%v mpesa withdrawal for %s on %s has been processed successfully. "+
+			"Your voucher balance is KES%v. You have received KES%v cashback.",
+			payment.Amount, *tx.Destination, date, float.Balance, cashback)
+		//message := fmt.Sprintf("KES%v Float for %s purchased successfully", payment.Amount, strings.Join(strings.Split(data.Store, " ")[0:4], " "))
+		//if payment.Status != "COMPLETED" {
+		//	message = fmt.Sprintf("Sorry, KES%v Float for %s could not be purchased", payment.Amount, tx.Destination)
+		//}
+		s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+	}()
+
+	// TODO: add go func with code to debit savings and send to save platform
+	go s.earningService.SaveEarnings()
+
+	return err
+}
+
 func (s *service) getWithdrawalCharge(amount int) int {
 	charges, err := s.paymentsApi.GetWithdrawalCharges()
 	if err != nil {
@@ -426,6 +587,36 @@ func (s *service) getWithdrawalCharge(amount int) int {
 	for _, charge := range charges {
 		if charge.Min <= amount && amount <= charge.Max {
 			return charge.Charge
+		}
+	}
+
+	return 0
+}
+
+func (s *service) getMpesaWithdrawalCashback(amount int) int {
+	cashbacks, err := s.paymentsApi.GetMpesaWithdrawalCommissions()
+	if err != nil {
+		return 0
+	}
+
+	for _, cashback := range cashbacks {
+		if cashback.Min <= amount && amount <= cashback.Max {
+			return cashback.Charge
+		}
+	}
+
+	return 0
+}
+
+func (s *service) getMpesaWithdrawalCommission(amount int) int {
+	commissions, err := s.paymentsApi.GetMpesaWithdrawalInviterCommissions()
+	if err != nil {
+		return 0
+	}
+
+	for _, commission := range commissions {
+		if commission.Min <= amount && amount <= commission.Max {
+			return commission.Charge
 		}
 	}
 

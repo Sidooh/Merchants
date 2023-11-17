@@ -6,6 +6,7 @@ type Payment struct {
 	ModelID
 
 	Amount      float32 `json:"amount" gorm:"not null;type:decimal(10,2);"`
+	Charge      float32 `json:"charge" gorm:"not null;type:decimal(6,2);"`
 	Status      string  `json:"status" gorm:"size:16; default:PENDING"`
 	Description string  `json:"description" gorm:"size:64"`
 
