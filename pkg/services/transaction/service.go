@@ -318,8 +318,8 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 
 			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
 
-			message := fmt.Sprintf("Hi, we could not complete your"+
-				" KES%v mpesa withdrawal for %s on %s. Please try again later.",
+			message := fmt.Sprintf("Hi, we could not complete the"+
+				" KES%v cash withdrawal by %s on %s. Please try again later.",
 				transaction.Amount, *transaction.Destination, date)
 
 			account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
