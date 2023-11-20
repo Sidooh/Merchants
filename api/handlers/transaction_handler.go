@@ -139,10 +139,10 @@ func MpesaWithdrawal(service transaction.Service) fiber.Handler {
 
 		fetched, err := service.MpesaWithdrawal(&entities.Transaction{
 			Amount:      float32(request.Amount),
-			Description: "Mpesa Withdrawal",
+			Description: "Cash Withdrawal",
 			Destination: &request.Phone,
 			MerchantId:  uint(id),
-			Product:     "MPESA_WITHDRAWAL",
+			Product:     "CASH_WITHDRAWAL",
 		})
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)

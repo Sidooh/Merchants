@@ -323,7 +323,7 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 	mt, err := s.merchantRepository.ReadMerchant(transaction.MerchantId)
 
 	switch transaction.Product {
-	case "MPESA_WITHDRAWAL":
+	case "CASH_WITHDRAWAL":
 		if ipn.Status == "FAILED" {
 
 			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
