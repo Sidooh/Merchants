@@ -73,7 +73,17 @@ func (s *service) GetTransaction(id uint) (results *presenter.Transaction, err e
 		return nil, err
 	}
 
-	utils.ConvertStruct(tx, &results)
+	results = &presenter.Transaction{
+		Id:          tx.Id,
+		Description: tx.Description,
+		Destination: *tx.Destination,
+		Status:      tx.Status,
+		Amount:      tx.Amount,
+		MerchantId:  tx.MerchantId,
+		Product:     tx.Product,
+		CreatedAt:   tx.CreatedAt,
+		UpdatedAt:   tx.UpdatedAt,
+	}
 
 	return
 }
