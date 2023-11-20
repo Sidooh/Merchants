@@ -9,4 +9,5 @@ type Transaction struct {
 	MerchantId  uint    `json:"merchant"`
 	Product     string  `json:"product"`
 	CreatedAt   string  `json:"created_at"`
+	UpdatedAt   string  `json:"updated_at"`
 }
