@@ -111,10 +111,10 @@ func BuyFloat(service transaction.Service) fiber.Handler {
 
 		fetched, err := service.PurchaseFloat(&entities.Transaction{
 			Amount:      float32(request.Amount),
-			Description: "Float Purchase",
+			Description: "Mpesa Float Purchase",
 			Destination: &dest,
 			MerchantId:  uint(id),
-			Product:     "FLOAT",
+			Product:     "MPESA_FLOAT",
 		}, request.Agent, request.Store)
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)
@@ -143,6 +143,34 @@ func MpesaWithdrawal(service transaction.Service) fiber.Handler {
 			Destination: &request.Phone,
 			MerchantId:  uint(id),
 			Product:     "CASH_WITHDRAWAL",
+		})
+		if err != nil {
+			return utils.HandleErrorResponse(ctx, err)
+		}
+
+		return utils.HandleSuccessResponse(ctx, fetched)
+	}
+}
+
+func FloatTopUp(service transaction.Service) fiber.Handler {
+	return func(ctx *fiber.Ctx) error {
+		var request MpesaWithdrawalRequest
+		if err := middleware.BindAndValidateRequest(ctx, &request); err != nil {
+			return ctx.Status(http.StatusUnprocessableEntity).JSON(err)
+		}
+
+		id, err := ctx.ParamsInt("merchantId")
+		if err != nil {
+			ctx.Status(http.StatusBadRequest)
+			return ctx.JSON(utils.ValidationErrorResponse(errors.New("invalid merchant id parameter")))
+		}
+
+		fetched, err := service.FloatPurchase(&entities.Transaction{
+			Amount:      float32(request.Amount),
+			Description: "Float Top Up",
+			Destination: &request.Phone,
+			MerchantId:  uint(id),
+			Product:     "FLOAT",
 		})
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)

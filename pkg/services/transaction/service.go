@@ -27,6 +27,7 @@ type Service interface {
 
 	PurchaseFloat(transaction *entities.Transaction, agent, store string) (*entities.Transaction, error)
 	MpesaWithdrawal(transaction *entities.Transaction) (*entities.Transaction, error)
+	FloatPurchase(transaction *entities.Transaction) (*entities.Transaction, error)
 	WithdrawEarnings(transaction *entities.Transaction, source, destination, account string) (*entities.Transaction, error)
 
 	CompleteTransaction(payment *entities.Payment, ipn *utils.Payment) error
@@ -188,6 +189,52 @@ func (s *service) MpesaWithdrawal(data *entities.Transaction) (tx *entities.Tran
 	return
 }
 
+func (s *service) FloatPurchase(data *entities.Transaction) (tx *entities.Transaction, err error) {
+	merchant, err := s.merchantRepository.ReadMerchant(data.MerchantId)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err = s.repository.CreateTransaction(data)
+	if err != nil {
+		return nil, err
+	}
+
+	payment, err := s.paymentsApi.FloatPurchase(merchant.AccountId, merchant.FloatAccountId, int(tx.Amount), *tx.Destination)
+	if err != nil {
+		// TODO: check on connect timeout and exclude from failed tx...
+		tx.Status = "FAILED"
+		tx, err := s.repository.UpdateTransaction(tx)
+		if err != nil {
+			return nil, err
+		}
+
+		logger.ClientLog.Error("Error purchasing float", "tx", tx, "error", err)
+
+		go func() {
+			account, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
+
+			message := fmt.Sprintf("Sorry, KES%v Voucher purchase could not be processed", tx.Amount)
+
+			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+		}()
+
+		return nil, err
+	}
+
+	s.paymentRepository.CreatePayment(&entities.Payment{
+		Amount: payment.Amount,
+		Charge: float32(payment.Charge),
+		Status: payment.Status,
+		//Description:     payment.,ba
+		Destination:   payment.Destination,
+		TransactionId: tx.Id,
+		PaymentId:     payment.Id,
+	})
+
+	return
+}
+
 func (s *service) WithdrawEarnings(data *entities.Transaction, source, destination, account string) (tx *entities.Transaction, err error) {
 	merchant, err := s.merchantRepository.ReadMerchant(data.MerchantId)
 	if err != nil {
@@ -323,6 +370,42 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 	mt, err := s.merchantRepository.ReadMerchant(transaction.MerchantId)
 
 	switch transaction.Product {
+	case "FLOAT":
+		if ipn.Status == "FAILED" {
+
+			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
+
+			message := fmt.Sprintf("Hi, we could not complete the"+
+				" KES%v voucher purchase by %s on %s. Please try again later.",
+				transaction.Amount, *transaction.Destination, date)
+
+			account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
+			if err != nil {
+				return err
+			}
+
+			s.notifyApi.SendSMS("ERROR", account.Phone, message)
+
+			transaction, err = s.UpdateTransaction(&entities.Transaction{
+				ModelID: entities.ModelID{Id: transaction.Id},
+				Status:  payment.Status,
+			})
+
+			return nil
+		}
+
+		go func() {
+			account, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
+
+			float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(mt.FloatAccountId)))
+
+			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
+			message := fmt.Sprintf("Voucher purchase of KES%v for %s on %s was successful. Cost KES%v. New Voucher Balance is KES%v",
+				transaction.Amount, *transaction.Destination, date, ipn.Charge, float.Balance)
+
+			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+		}()
+
 	case "CASH_WITHDRAWAL":
 		if ipn.Status == "FAILED" {
 
@@ -352,7 +435,7 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 			return err
 		}
 
-	case "FLOAT":
+	case "MPESA_FLOAT":
 		if ipn.Status == "FAILED" {
 
 			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")

@@ -141,6 +141,26 @@ func (api *ApiClient) MpesaWithdraw(accountId, floatAccountId uint, amount int, 
 	return apiResponse.Data, err
 }
 
+func (api *ApiClient) FloatPurchase(accountId, floatAccountId uint, amount int, phone string) (*utils.Payment, error) {
+	var apiResponse = new(utils.PaymentApiResponse)
+
+	jsonData, err := json.Marshal(map[string]interface{}{
+		"account_id":          accountId,
+		"amount":              amount,
+		"description":         "Float Credit",
+		"source":              "MPESA",
+		"source_account":      phone,
+		"ipn":                 viper.GetString("APP_URL") + "/api/v1/payments/ipn",
+		"destination":         "FLOAT",
+		"destination_account": floatAccountId,
+	})
+	dataBytes := bytes.NewBuffer(jsonData)
+
+	err = api.NewRequest(http.MethodPost, "/payments/merchant-float", dataBytes).Send(apiResponse)
+
+	return apiResponse.Data, err
+}
+
 func (api *ApiClient) GetWithdrawalCharges() ([]utils.AmountCharge, error) {
 	endpoint := "/charges/withdrawal"
 	apiResponse := new(utils.ChargesApiResponse)
@@ -159,8 +179,8 @@ func (api *ApiClient) GetWithdrawalCharges() ([]utils.AmountCharge, error) {
 	return *apiResponse.Data, nil
 }
 
-func (api *ApiClient) GetMpesaWithdrawalCharges() ([]utils.AmountCharge, error) {
-	endpoint := "/charges/mpesa-withdrawal"
+func (api *ApiClient) GetMpesaCollectionCharges() ([]utils.AmountCharge, error) {
+	endpoint := "/charges/mpesa-collection"
 	apiResponse := new(utils.ChargesApiResponse)
 
 	// TODO: Configure caching
