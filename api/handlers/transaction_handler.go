@@ -109,7 +109,7 @@ func BuyFloat(service transaction.Service) fiber.Handler {
 
 		dest := fmt.Sprintf("%v-%v", request.Agent, request.Store)
 
-		fetched, err := service.PurchaseFloat(&entities.Transaction{
+		fetched, err := service.PurchaseMpesaFloat(&entities.Transaction{
 			Amount:      float32(request.Amount),
 			Description: "Mpesa Float Purchase",
 			Destination: &dest,
