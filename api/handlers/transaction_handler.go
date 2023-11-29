@@ -12,10 +12,12 @@ import (
 	"strings"
 )
 
-type FloatPurchaseRequest struct {
-	Agent  string `json:"agent" validate:"required,numeric"`
-	Store  string `json:"store" validate:"required,numeric"`
-	Amount int    `json:"amount" validate:"required,numeric"`
+type MpesaFloatPurchaseRequest struct {
+	Agent        string `json:"agent" validate:"required,numeric"`
+	Store        string `json:"store" validate:"required,numeric"`
+	Amount       int    `json:"amount" validate:"required,numeric"`
+	Method       string `json:"method" validate:"omitempty,oneof=MPESA FLOAT"`
+	DebitAccount string `json:"debit_account" validate:"omitempty,numeric"`
 }
 
 type MpesaWithdrawalRequest struct {
@@ -94,9 +96,9 @@ func GetTransactionsByMerchant(service transaction.Service) fiber.Handler {
 	}
 }
 
-func BuyFloat(service transaction.Service) fiber.Handler {
+func MpesaFloat(service transaction.Service) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		var request FloatPurchaseRequest
+		var request MpesaFloatPurchaseRequest
 		if err := middleware.BindAndValidateRequest(ctx, &request); err != nil {
 			return ctx.Status(http.StatusUnprocessableEntity).JSON(err)
 		}
@@ -115,7 +117,7 @@ func BuyFloat(service transaction.Service) fiber.Handler {
 			Destination: &dest,
 			MerchantId:  uint(id),
 			Product:     "MPESA_FLOAT",
-		}, request.Agent, request.Store)
+		}, request.Agent, request.Store, request.Method, request.DebitAccount)
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)
 		}

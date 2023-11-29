@@ -25,7 +25,7 @@ type Service interface {
 	GetTransactionsByMerchant(merchantId uint) (*[]presenter.Transaction, error)
 	UpdateTransaction(transaction *entities.Transaction) (*entities.Transaction, error)
 
-	PurchaseMpesaFloat(transaction *entities.Transaction, agent, store string) (*entities.Transaction, error)
+	PurchaseMpesaFloat(transaction *entities.Transaction, agent, store, source, sourceAccount string) (*entities.Transaction, error)
 	MpesaWithdrawal(transaction *entities.Transaction) (*entities.Transaction, error)
 	FloatPurchase(transaction *entities.Transaction) (*entities.Transaction, error)
 	WithdrawEarnings(transaction *entities.Transaction, source, destination, account string) (*entities.Transaction, error)
@@ -97,7 +97,7 @@ func (s *service) UpdateTransaction(transaction *entities.Transaction) (*entitie
 	return s.repository.UpdateTransaction(transaction)
 }
 
-func (s *service) PurchaseMpesaFloat(data *entities.Transaction, agent, store string) (tx *entities.Transaction, err error) {
+func (s *service) PurchaseMpesaFloat(data *entities.Transaction, agent, store, source, sourceAccount string) (tx *entities.Transaction, err error) {
 	merchant, err := s.merchantRepository.ReadMerchant(data.MerchantId)
 	if err != nil {
 		return nil, err
@@ -108,7 +108,11 @@ func (s *service) PurchaseMpesaFloat(data *entities.Transaction, agent, store st
 		return nil, err
 	}
 
-	payment, err := s.paymentsApi.BuyMpesaFloat(merchant.AccountId, merchant.FloatAccountId, int(tx.Amount), agent, store)
+	if source == "" || sourceAccount == "" {
+		source = "FLOAT"
+		sourceAccount = strconv.Itoa(int(merchant.FloatAccountId))
+	}
+	payment, err := s.paymentsApi.BuyMpesaFloat(merchant.AccountId, int(tx.Amount), agent, store, source, sourceAccount)
 	if err != nil {
 		// TODO: check on connect timeout and exclude from failed tx...
 		tx.Status = "FAILED"
