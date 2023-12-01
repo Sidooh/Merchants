@@ -311,7 +311,7 @@ func (s *service) FloatTransfer(data *entities.Transaction) (transaction *entiti
 
 			// sender
 			message := fmt.Sprintf("Voucher transfer of KES%v to %s on %s was successful. Cost KES%v. New Voucher Balance is KES%v",
-				transaction.Amount, recipientAcc.Phone, date, paymentData.Charge, float.Balance)
+				transaction.Amount, recipientAcc.Phone+" - "+recipient.BusinessName, date, paymentData.Charge, float.Balance)
 
 			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
 
