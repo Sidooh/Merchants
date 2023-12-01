@@ -318,7 +318,7 @@ func (s *service) FloatTransfer(data *entities.Transaction) (transaction *entiti
 			float, _ = s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(recipient.FloatAccountId)))
 
 			// recipient
-			message = fmt.Sprintf("You have received a Voucher of KES%v from %s on %s. New Voucher Balance is KES%v",
+			message = fmt.Sprintf("You have received KES%v Voucher from %s on %s. New Voucher Balance is KES%v",
 				transaction.Amount, account.Phone+" - "+merchant.BusinessName, date, float.Balance)
 
 			s.notifyApi.SendSMS("DEFAULT", recipientAcc.Phone, message)
