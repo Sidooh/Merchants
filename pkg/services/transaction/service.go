@@ -319,7 +319,7 @@ func (s *service) FloatTransfer(data *entities.Transaction) (transaction *entiti
 
 			// recipient
 			message = fmt.Sprintf("You have received a Voucher of KES%v from %s on %s. New Voucher Balance is KES%v",
-				transaction.Amount, account.Phone, date, float.Balance)
+				transaction.Amount, account.Phone+" - "+merchant.BusinessName, date, float.Balance)
 
 			s.notifyApi.SendSMS("DEFAULT", recipientAcc.Phone, message)
 
