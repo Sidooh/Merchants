@@ -141,7 +141,7 @@ func (api *ApiClient) MpesaWithdraw(accountId, floatAccountId uint, amount int, 
 	return apiResponse.Data, err
 }
 
-func (api *ApiClient) FloatPurchase(accountId, floatAccountId uint, amount int, phone string) (*utils.Payment, error) {
+func (api *ApiClient) FloatPurchase(accountId, floatAccountId uint, amount int, source string) (*utils.Payment, error) {
 	var apiResponse = new(utils.PaymentApiResponse)
 
 	jsonData, err := json.Marshal(map[string]interface{}{
@@ -149,7 +149,7 @@ func (api *ApiClient) FloatPurchase(accountId, floatAccountId uint, amount int, 
 		"amount":              amount,
 		"description":         "Float Credit",
 		"source":              "MPESA",
-		"source_account":      phone,
+		"source_account":      source,
 		"ipn":                 viper.GetString("APP_URL") + "/api/v1/payments/ipn",
 		"destination":         "FLOAT",
 		"destination_account": floatAccountId,
