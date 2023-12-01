@@ -15,6 +15,7 @@ type Payment struct {
 	Charge      int            `json:"charge"`
 	Status      string         `json:"status"`
 	Destination datatypes.JSON `json:"destination"`
+	Description string         `json:"description"`
 	Store       string         `json:"store"`
 }
 

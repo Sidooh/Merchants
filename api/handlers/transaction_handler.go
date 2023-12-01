@@ -20,6 +20,11 @@ type MpesaFloatPurchaseRequest struct {
 	DebitAccount string `json:"debit_account" validate:"omitempty,numeric"`
 }
 
+type FloatTransferRequest struct {
+	Account string `json:"account" validate:"required,numeric"`
+	Amount  int    `json:"amount" validate:"required,numeric"`
+}
+
 type MpesaWithdrawalRequest struct {
 	Phone  string `json:"phone" validate:"required,numeric"`
 	Amount int    `json:"amount" validate:"required,numeric"`
@@ -171,6 +176,34 @@ func FloatTopUp(service transaction.Service) fiber.Handler {
 			Amount:      float32(request.Amount),
 			Description: "Float Top Up",
 			Destination: &request.Phone,
+			MerchantId:  uint(id),
+			Product:     "FLOAT",
+		})
+		if err != nil {
+			return utils.HandleErrorResponse(ctx, err)
+		}
+
+		return utils.HandleSuccessResponse(ctx, fetched)
+	}
+}
+
+func FloatTransfer(service transaction.Service) fiber.Handler {
+	return func(ctx *fiber.Ctx) error {
+		var request FloatTransferRequest
+		if err := middleware.BindAndValidateRequest(ctx, &request); err != nil {
+			return ctx.Status(http.StatusUnprocessableEntity).JSON(err)
+		}
+
+		id, err := ctx.ParamsInt("merchantId")
+		if err != nil {
+			ctx.Status(http.StatusBadRequest)
+			return ctx.JSON(utils.ValidationErrorResponse(errors.New("invalid merchant id parameter")))
+		}
+
+		fetched, err := service.FloatTransfer(&entities.Transaction{
+			Amount:      float32(request.Amount),
+			Description: "Float Transfer",
+			Destination: &request.Account,
 			MerchantId:  uint(id),
 			Product:     "FLOAT",
 		})
