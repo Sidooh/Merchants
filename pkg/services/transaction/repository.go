@@ -45,10 +45,11 @@ func (r *repository) ReadTransactions(filters Filters) (transactions *[]presente
 	}
 	if filters.Days > 0 {
 		duration := time.Duration(filters.Days) * 24 * time.Hour
-		query = query.Where("created_at > ?", time.Now().Add(-duration))
+		query = query.Where("transactions.created_at > ?", time.Now().Add(-duration))
 	}
 
-	err = query.Find(&transactions).Error
+	// TODO: Fix this into the filters struct
+	err = query.Joins("Payment").Find(&transactions).Error
 
 	return
 }

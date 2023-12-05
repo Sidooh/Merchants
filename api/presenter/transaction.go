@@ -12,4 +12,5 @@ type Transaction struct {
 	Product     string    `json:"product"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	Payment     *Payment  `json:"payment,omitempty"`
 }

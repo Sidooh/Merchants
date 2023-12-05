@@ -12,6 +12,7 @@ type Transaction struct {
 	Product     string  `json:"product" gorm:"not null;size:16"`
 
 	Merchant Merchant `json:"-"`
+	Payment  *Payment `json:"payment"`
 
 	ModelTimeStamps
 }
