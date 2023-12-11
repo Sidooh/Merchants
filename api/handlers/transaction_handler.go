@@ -8,6 +8,7 @@ import (
 	"merchants.sidooh/pkg/entities"
 	"merchants.sidooh/pkg/services/transaction"
 	"merchants.sidooh/utils"
+	"merchants.sidooh/utils/consts"
 	"net/http"
 	"strings"
 )
@@ -121,7 +122,7 @@ func MpesaFloat(service transaction.Service) fiber.Handler {
 			Description: "Mpesa Float Purchase",
 			Destination: &dest,
 			MerchantId:  uint(id),
-			Product:     "MPESA_FLOAT",
+			Product:     consts.MPESA_FLOAT,
 		}, request.Agent, request.Store, request.Method, request.DebitAccount)
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)
@@ -149,7 +150,7 @@ func MpesaWithdrawal(service transaction.Service) fiber.Handler {
 			Description: "Cash Withdrawal",
 			Destination: &request.Phone,
 			MerchantId:  uint(id),
-			Product:     "CASH_WITHDRAWAL",
+			Product:     consts.CASH_WITHDRAW,
 		})
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)
@@ -177,7 +178,7 @@ func FloatTopUp(service transaction.Service) fiber.Handler {
 			Description: "Float Top Up",
 			Destination: &request.Phone,
 			MerchantId:  uint(id),
-			Product:     "FLOAT",
+			Product:     consts.FLOAT_PURCHASE,
 		})
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)
@@ -205,8 +206,36 @@ func FloatTransfer(service transaction.Service) fiber.Handler {
 			Description: "Float Transfer",
 			Destination: &request.Account,
 			MerchantId:  uint(id),
-			Product:     "FLOAT",
+			Product:     consts.FLOAT_TRANSFER,
 		})
+		if err != nil {
+			return utils.HandleErrorResponse(ctx, err)
+		}
+
+		return utils.HandleSuccessResponse(ctx, fetched)
+	}
+}
+
+func FloatWithdraw(service transaction.Service) fiber.Handler {
+	return func(ctx *fiber.Ctx) error {
+		var request EarningsWithdrawalRequest
+		if err := middleware.BindAndValidateRequest(ctx, &request); err != nil {
+			return ctx.Status(http.StatusUnprocessableEntity).JSON(err)
+		}
+
+		id, err := ctx.ParamsInt("merchantId")
+		if err != nil {
+			ctx.Status(http.StatusBadRequest)
+			return ctx.JSON(utils.ValidationErrorResponse(errors.New("invalid merchant id parameter")))
+		}
+
+		fetched, err := service.FloatWithdraw(&entities.Transaction{
+			Amount:      float32(request.Amount),
+			Description: "Float Withdraw",
+			Destination: &request.Account,
+			MerchantId:  uint(id),
+			Product:     consts.FLOAT_WITHDRAW,
+		}, request.Destination, request.Account)
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)
 		}
@@ -235,7 +264,7 @@ func WithdrawEarnings(service transaction.Service) fiber.Handler {
 			Description: "Earnings Withdrawal - " + request.Source,
 			Destination: &dest,
 			MerchantId:  uint(id),
-			Product:     "WITHDRAWAL",
+			Product:     consts.EARNINGS_WITHDRAW,
 		}, request.Source, request.Destination, request.Account)
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)

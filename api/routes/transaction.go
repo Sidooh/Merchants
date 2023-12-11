@@ -13,6 +13,7 @@ func TransactionRouter(app fiber.Router, service transaction.Service) {
 	app.Get("/merchants/:merchantId/transactions", handlers.GetTransactionsByMerchant(service))
 	app.Post("/merchants/:merchantId/float-top-up", handlers.FloatTopUp(service))
 	app.Post("/merchants/:merchantId/float-transfer", handlers.FloatTransfer(service))
+	app.Post("/merchants/:merchantId/float-withdraw", handlers.FloatWithdraw(service))
 	app.Post("/merchants/:merchantId/buy-mpesa-float", handlers.MpesaFloat(service))
 	app.Post("/merchants/:merchantId/mpesa-withdraw", handlers.MpesaWithdrawal(service))
 	app.Post("/merchants/:merchantId/earnings/withdraw", handlers.WithdrawEarnings(service))

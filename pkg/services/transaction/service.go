@@ -14,6 +14,7 @@ import (
 	"merchants.sidooh/pkg/services/mpesa_store"
 	"merchants.sidooh/pkg/services/payment"
 	"merchants.sidooh/utils"
+	"merchants.sidooh/utils/consts"
 	"slices"
 	"strconv"
 	"strings"
@@ -29,6 +30,7 @@ type Service interface {
 	MpesaWithdrawal(transaction *entities.Transaction) (*entities.Transaction, error)
 	FloatPurchase(transaction *entities.Transaction) (*entities.Transaction, error)
 	FloatTransfer(transaction *entities.Transaction) (*entities.Transaction, error)
+	FloatWithdraw(transaction *entities.Transaction, destination, account string) (*entities.Transaction, error)
 	WithdrawEarnings(transaction *entities.Transaction, source, destination, account string) (*entities.Transaction, error)
 
 	CompleteTransaction(payment *entities.Payment, ipn *utils.Payment) error
@@ -331,6 +333,52 @@ func (s *service) FloatTransfer(data *entities.Transaction) (transaction *entiti
 	return
 }
 
+func (s *service) FloatWithdraw(data *entities.Transaction, destination, account string) (transaction *entities.Transaction, err error) {
+	merchant, err := s.merchantRepository.ReadMerchant(data.MerchantId)
+	if err != nil {
+		return nil, err
+	}
+
+	transaction, err = s.repository.CreateTransaction(data)
+	if err != nil {
+		return nil, err
+	}
+
+	paymentData, err := s.paymentsApi.FloatWithdraw(merchant.AccountId, merchant.FloatAccountId, int(transaction.Amount), destination, account)
+	if err != nil {
+		// TODO: check on connect timeout and exclude from failed tx...
+		transaction.Status = "FAILED"
+		transaction, err = s.repository.UpdateTransaction(transaction)
+		if err != nil {
+			return nil, err
+		}
+
+		logger.ClientLog.Error("Error withdrawing float", "tx", transaction, "error", err)
+
+		go func() {
+			account, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
+
+			message := fmt.Sprintf("Sorry, KES%v Voucher withdrawal could not be processed", transaction.Amount)
+
+			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+		}()
+
+		return nil, err
+	}
+
+	s.paymentRepository.CreatePayment(&entities.Payment{
+		Amount:        paymentData.Amount,
+		Charge:        float32(paymentData.Charge),
+		Status:        paymentData.Status,
+		Description:   paymentData.Description,
+		Destination:   paymentData.Destination,
+		TransactionId: transaction.Id,
+		PaymentId:     paymentData.Id,
+	})
+
+	return
+}
+
 func (s *service) WithdrawEarnings(data *entities.Transaction, source, destination, account string) (tx *entities.Transaction, err error) {
 	merchant, err := s.merchantRepository.ReadMerchant(data.MerchantId)
 	if err != nil {
@@ -466,7 +514,7 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 	mt, err := s.merchantRepository.ReadMerchant(transaction.MerchantId)
 
 	switch transaction.Product {
-	case "FLOAT":
+	case consts.FLOAT_PURCHASE:
 		if ipn.Status == "FAILED" {
 
 			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
@@ -502,7 +550,43 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
 		}()
 
-	case "CASH_WITHDRAWAL":
+	case consts.FLOAT_WITHDRAW:
+		if ipn.Status == "FAILED" {
+
+			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
+
+			message := fmt.Sprintf("Hi, we could not complete the"+
+				" KES%v voucher withdrawal by %s on %s. Please try again later.",
+				transaction.Amount, *transaction.Destination, date)
+
+			account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
+			if err != nil {
+				return err
+			}
+
+			s.notifyApi.SendSMS("ERROR", account.Phone, message)
+
+			transaction, err = s.UpdateTransaction(&entities.Transaction{
+				ModelID: entities.ModelID{Id: transaction.Id},
+				Status:  payment.Status,
+			})
+
+			return nil
+		}
+
+		go func() {
+			account, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
+
+			float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(mt.FloatAccountId)))
+
+			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
+			message := fmt.Sprintf("Voucher withdrawal of KES%v for %s on %s was successful. Cost KES%v. New Voucher Balance is KES%v",
+				transaction.Amount, account.Phone, date, ipn.Charge, float.Balance)
+
+			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+		}()
+
+	case consts.CASH_WITHDRAW:
 		if ipn.Status == "FAILED" {
 
 			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
@@ -531,7 +615,7 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 			return err
 		}
 
-	case "MPESA_FLOAT":
+	case consts.MPESA_FLOAT:
 		if ipn.Status == "FAILED" {
 
 			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
@@ -563,7 +647,7 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 			return err
 		}
 
-	case "WITHDRAWAL":
+	case consts.EARNINGS_WITHDRAW:
 		account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
 		if err != nil {
 			return err
