@@ -32,7 +32,7 @@ type MpesaWithdrawalRequest struct {
 }
 
 type EarningsWithdrawalRequest struct {
-	Source      string `json:"source" validate:"required,oneof=CASHBACK COMMISSION"`
+	Source      string `json:"source" validate:"required,oneof=CASHBACK COMMISSION VOUCHER"`
 	Destination string `json:"destination" validate:"required,oneof=MPESA FLOAT"`
 	Account     string `json:"account" validate:"required,numeric"`
 	Amount      int    `json:"amount" validate:"required,numeric"`

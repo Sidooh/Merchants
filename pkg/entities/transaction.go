@@ -9,7 +9,7 @@ type Transaction struct {
 
 	Destination *string `json:"destination" gorm:"size:64"`
 	MerchantId  uint    `json:"merchant_id" gorm:"not null"`
-	Product     string  `json:"product" gorm:"not null;size:16"`
+	Product     string  `json:"product" gorm:"not null;size:32"`
 
 	Merchant Merchant `json:"-"`
 	Payment  *Payment `json:"payment"`
