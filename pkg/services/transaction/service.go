@@ -682,7 +682,8 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 func (s *service) computeCashback(mt *presenter.Merchant, tx *entities.Transaction, payment *entities.Payment, data *utils.Payment) error {
 	// Compute cashback and commissions
 	// Compute cashback
-	cashback := float32(data.Charge) * .2
+	//TODO Fix this for float purchase using mpesa
+	cashback := float32(30) * .2
 
 	s.earningRepository.CreateEarning(&entities.Earning{
 		Amount:        cashback,
@@ -705,7 +706,8 @@ func (s *service) computeCashback(mt *presenter.Merchant, tx *entities.Transacti
 	s.earningAccService.DebitAccount(earningAcc.Id, cashback*.2) // Debit acc for savings
 
 	// Compute commissions
-	commission := float32(data.Charge) * .1
+	//TODO Fix this for float purchase using mpesa
+	commission := float32(30) * .1
 
 	inviters, err := s.accountsApi.GetInviters(strconv.Itoa(int(mt.AccountId)))
 	if err != nil {
