@@ -127,11 +127,9 @@ func (s *service) PurchaseMpesaFloat(data *entities.Transaction, agent, store, s
 		logger.ClientLog.Error("Error buying float", "tx", tx, "error", err)
 
 		go func() {
-			account, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
-
 			message := fmt.Sprintf("Sorry, KES%v Float could not be purchased", tx.Amount)
 
-			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+			s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 		}()
 
 		return nil, err
@@ -173,11 +171,9 @@ func (s *service) MpesaWithdrawal(data *entities.Transaction) (tx *entities.Tran
 		logger.ClientLog.Error("Error withdrawing mpesa", "tx", tx, "error", err)
 
 		go func() {
-			account, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
-
 			message := fmt.Sprintf("Sorry, KES%v Withdrawal could not be processed", tx.Amount)
 
-			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+			s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 		}()
 
 		return nil, err
@@ -219,11 +215,9 @@ func (s *service) FloatPurchase(data *entities.Transaction) (tx *entities.Transa
 		logger.ClientLog.Error("Error purchasing float", "tx", tx, "error", err)
 
 		go func() {
-			account, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
-
 			message := fmt.Sprintf("Sorry, KES%v Voucher purchase could not be processed", tx.Amount)
 
-			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+			s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 		}()
 
 		return nil, err
@@ -275,11 +269,9 @@ func (s *service) FloatTransfer(data *entities.Transaction) (transaction *entiti
 		logger.ClientLog.Error("Error transferring float", "tx", transaction, "error", err)
 
 		go func() {
-			account, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
-
 			message := fmt.Sprintf("Sorry, KES%v Voucher transfer could not be processed", transaction.Amount)
 
-			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+			s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 		}()
 
 		return nil, err
@@ -304,7 +296,6 @@ func (s *service) FloatTransfer(data *entities.Transaction) (transaction *entiti
 		})
 
 		go func() {
-			account, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
 			recipientAcc, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(recipient.AccountId)))
 
 			float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(merchant.FloatAccountId)))
@@ -315,13 +306,13 @@ func (s *service) FloatTransfer(data *entities.Transaction) (transaction *entiti
 			message := fmt.Sprintf("Voucher transfer of KES%v to %s on %s was successful. Cost KES%v. New Voucher Balance is KES%v",
 				transaction.Amount, recipientAcc.Phone+" - "+recipient.BusinessName, date, paymentData.Charge, float.Balance)
 
-			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+			s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 
 			float, _ = s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(recipient.FloatAccountId)))
 
 			// recipient
 			message = fmt.Sprintf("You have received KES%v Voucher from %s on %s. New Voucher Balance is KES%v",
-				transaction.Amount, account.Phone+" - "+merchant.BusinessName, date, float.Balance)
+				transaction.Amount, merchant.Phone+" - "+merchant.BusinessName, date, float.Balance)
 
 			s.notifyApi.SendSMS("DEFAULT", recipientAcc.Phone, message)
 
@@ -356,11 +347,9 @@ func (s *service) FloatWithdraw(data *entities.Transaction, destination, account
 		logger.ClientLog.Error("Error withdrawing float", "tx", transaction, "error", err)
 
 		go func() {
-			account, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
-
 			message := fmt.Sprintf("Sorry, KES%v Voucher withdrawal could not be processed", transaction.Amount)
 
-			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+			s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 		}()
 
 		return nil, err
@@ -511,7 +500,7 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 
 	// TODO: convert this to return entity which means time conversion below can be removed
 	transaction, err := s.repository.ReadTransaction(updatedPayment.TransactionId)
-	mt, err := s.merchantRepository.ReadMerchant(transaction.MerchantId)
+	merchant, err := s.merchantRepository.ReadMerchant(transaction.MerchantId)
 
 	switch transaction.Product {
 	case consts.FLOAT_PURCHASE:
@@ -523,12 +512,7 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 				" KES%v voucher purchase by %s on %s. Please try again later.",
 				transaction.Amount, *transaction.Destination, date)
 
-			account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
-			if err != nil {
-				return err
-			}
-
-			s.notifyApi.SendSMS("ERROR", account.Phone, message)
+			s.notifyApi.SendSMS("ERROR", merchant.Phone, message)
 
 			transaction, err = s.UpdateTransaction(&entities.Transaction{
 				ModelID: entities.ModelID{Id: transaction.Id},
@@ -539,15 +523,13 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 		}
 
 		go func() {
-			account, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
-
-			float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(mt.FloatAccountId)))
+			float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(merchant.FloatAccountId)))
 
 			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
 			message := fmt.Sprintf("Voucher purchase of KES%v for %s on %s was successful. Cost KES%v. New Voucher Balance is KES%v",
-				transaction.Amount, account.Phone, date, ipn.Charge, float.Balance)
+				transaction.Amount, merchant.Phone, date, ipn.Charge, float.Balance)
 
-			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+			s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 		}()
 
 	case consts.FLOAT_WITHDRAW:
@@ -559,12 +541,7 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 				" KES%v voucher withdrawal by %s on %s. Please try again later.",
 				transaction.Amount, *transaction.Destination, date)
 
-			account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
-			if err != nil {
-				return err
-			}
-
-			s.notifyApi.SendSMS("ERROR", account.Phone, message)
+			s.notifyApi.SendSMS("ERROR", merchant.Phone, message)
 
 			transaction, err = s.UpdateTransaction(&entities.Transaction{
 				ModelID: entities.ModelID{Id: transaction.Id},
@@ -575,15 +552,13 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 		}
 
 		go func() {
-			account, _ := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
-
-			float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(mt.FloatAccountId)))
+			float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(merchant.FloatAccountId)))
 
 			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
 			message := fmt.Sprintf("Voucher withdrawal of KES%v for %s on %s was successful. Cost KES%v. New Voucher Balance is KES%v",
-				transaction.Amount, account.Phone, date, ipn.Charge, float.Balance)
+				transaction.Amount, merchant.Phone, date, ipn.Charge, float.Balance)
 
-			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+			s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 		}()
 
 	case consts.CASH_WITHDRAW:
@@ -595,12 +570,7 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 				" KES%v cash withdrawal by %s on %s. Please try again later.",
 				transaction.Amount, *transaction.Destination, date)
 
-			account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
-			if err != nil {
-				return err
-			}
-
-			s.notifyApi.SendSMS("ERROR", account.Phone, message)
+			s.notifyApi.SendSMS("ERROR", merchant.Phone, message)
 
 			transaction, err = s.UpdateTransaction(&entities.Transaction{
 				ModelID: entities.ModelID{Id: transaction.Id},
@@ -610,7 +580,7 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 			return nil
 		}
 
-		err := s.computeMpesaWithdrawalCashback(mt, transaction, payment, ipn)
+		err := s.computeMpesaWithdrawalCashback(merchant, transaction, payment, ipn)
 		if err != nil {
 			return err
 		}
@@ -620,19 +590,14 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 
 			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
 
-			float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(mt.FloatAccountId)))
+			float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(merchant.FloatAccountId)))
 
 			message := fmt.Sprintf("Hi, we have added KES%v to your voucher account "+
 				"because we could not complete your"+
 				" KES%v float purchase for %s on %s. New voucher balance is KES%v.",
 				transaction.Amount, transaction.Amount, *transaction.Destination, date, float.Balance)
 
-			account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
-			if err != nil {
-				return err
-			}
-
-			s.notifyApi.SendSMS("ERROR", account.Phone, message)
+			s.notifyApi.SendSMS("ERROR", merchant.Phone, message)
 
 			transaction, err = s.UpdateTransaction(&entities.Transaction{
 				ModelID: entities.ModelID{Id: transaction.Id},
@@ -642,31 +607,28 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 			return nil
 		}
 
-		err := s.computeCashback(mt, transaction, payment, ipn)
+		err := s.computeCashback(merchant, transaction, payment, ipn)
 		if err != nil {
 			return err
 		}
 
 	case consts.EARNINGS_WITHDRAW:
-		account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
-		if err != nil {
-			return err
-		}
-
 		go func() {
 			earningType := strings.Split(transaction.Description, " - ")[1]
-			earningAcc, _ := s.earningAccRepository.ReadAccountByAccountIdAndType(mt.AccountId, earningType)
+			earningAcc, _ := s.earningAccRepository.ReadAccountByAccountIdAndType(merchant.AccountId, earningType)
 			destination := *transaction.Destination
 			if strings.Split(*transaction.Destination, "-")[0] == "FLOAT" {
 				destination = "VOUCHER"
 			}
 			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
+
 			message := fmt.Sprintf("Withdrawal of KES%v from %s to %s on %s was successful. Cost KES%v. New %s Balance is KES%v",
 				transaction.Amount, earningAcc.Type, destination, date, ipn.Charge, earningAcc.Type, earningAcc.Amount)
 			if payment.Status == "FAILED" {
 				message = fmt.Sprintf("Sorry, KES%v Withdrawal to %s could not be processed", transaction.Amount, destination)
 			}
-			s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+
+			s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 		}()
 	}
 
@@ -679,7 +641,7 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 	return err
 }
 
-func (s *service) computeCashback(mt *presenter.Merchant, tx *entities.Transaction, payment *entities.Payment, data *utils.Payment) error {
+func (s *service) computeCashback(merchant *presenter.Merchant, tx *entities.Transaction, payment *entities.Payment, data *utils.Payment) error {
 	// Compute cashback and commissions
 	// Compute cashback
 	//TODO Fix this for float purchase using mpesa
@@ -689,14 +651,14 @@ func (s *service) computeCashback(mt *presenter.Merchant, tx *entities.Transacti
 		Amount:        cashback,
 		Type:          "SELF",
 		TransactionId: tx.Id,
-		AccountId:     mt.AccountId,
+		AccountId:     merchant.AccountId,
 	})
 
-	earningAcc, err := s.earningAccRepository.ReadAccountByAccountIdAndType(mt.AccountId, "CASHBACK")
+	earningAcc, err := s.earningAccRepository.ReadAccountByAccountIdAndType(merchant.AccountId, "CASHBACK")
 	if err != nil {
 		earningAcc, err = s.earningAccRepository.CreateAccount(&entities.EarningAccount{
 			Type:      "CASHBACK",
-			AccountId: mt.AccountId,
+			AccountId: merchant.AccountId,
 		})
 		if err != nil {
 			return err
@@ -709,7 +671,7 @@ func (s *service) computeCashback(mt *presenter.Merchant, tx *entities.Transacti
 	//TODO Fix this for float purchase using mpesa
 	commission := float32(30) * .1
 
-	inviters, err := s.accountsApi.GetInviters(strconv.Itoa(int(mt.AccountId)))
+	inviters, err := s.accountsApi.GetInviters(strconv.Itoa(int(merchant.AccountId)))
 	if err != nil {
 		return err
 	}
@@ -738,11 +700,6 @@ func (s *service) computeCashback(mt *presenter.Merchant, tx *entities.Transacti
 		}
 	}
 
-	account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
-	if err != nil {
-		return err
-	}
-
 	go func() {
 		date := tx.CreatedAt.Format("02/01/2006, 3:04 PM")
 
@@ -750,18 +707,18 @@ func (s *service) computeCashback(mt *presenter.Merchant, tx *entities.Transacti
 			"You have received KES%v cashback.",
 			payment.Amount,
 			strings.Join(strings.Split(data.Store, " ")[0:4], " "), date, data.Charge, cashback)
-		//message := fmt.Sprintf("KES%v Float for %s purchased successfully", payment.Amount, strings.Join(strings.Split(data.Store, " ")[0:4], " "))
+
 		if payment.Status != "COMPLETED" {
 			message = fmt.Sprintf("Sorry, KES%v Float for %s could not be purchased", payment.Amount, tx.Destination)
 		}
-		s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+		s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 	}()
 
 	_, _ = s.mpesaStoreRepository.CreateStore(&entities.MpesaAgentStoreAccount{
 		Agent:      strings.Split(*tx.Destination, "-")[0],
 		Store:      strings.Split(*tx.Destination, "-")[1],
 		Name:       strings.Join(strings.Split(data.Store, " ")[0:4], " "),
-		MerchantId: mt.Id,
+		MerchantId: merchant.Id,
 	})
 
 	// TODO: add go func with code to debit savings and send to save platform
@@ -770,7 +727,7 @@ func (s *service) computeCashback(mt *presenter.Merchant, tx *entities.Transacti
 	return err
 }
 
-func (s *service) computeMpesaWithdrawalCashback(mt *presenter.Merchant, tx *entities.Transaction, payment *entities.Payment, data *utils.Payment) error {
+func (s *service) computeMpesaWithdrawalCashback(merchant *presenter.Merchant, tx *entities.Transaction, payment *entities.Payment, data *utils.Payment) error {
 	// Compute cashback and commissions
 	// Compute cashback
 	cashback := float32(s.getMpesaWithdrawalCashback(int(tx.Amount)))
@@ -779,14 +736,14 @@ func (s *service) computeMpesaWithdrawalCashback(mt *presenter.Merchant, tx *ent
 		Amount:        cashback,
 		Type:          "SELF",
 		TransactionId: tx.Id,
-		AccountId:     mt.AccountId,
+		AccountId:     merchant.AccountId,
 	})
 
-	earningAcc, err := s.earningAccRepository.ReadAccountByAccountIdAndType(mt.AccountId, "COMMISSION")
+	earningAcc, err := s.earningAccRepository.ReadAccountByAccountIdAndType(merchant.AccountId, "COMMISSION")
 	if err != nil {
 		earningAcc, err = s.earningAccRepository.CreateAccount(&entities.EarningAccount{
 			Type:      "COMMISSION",
-			AccountId: mt.AccountId,
+			AccountId: merchant.AccountId,
 		})
 		if err != nil {
 			return err
@@ -798,7 +755,7 @@ func (s *service) computeMpesaWithdrawalCashback(mt *presenter.Merchant, tx *ent
 	// Compute commissions
 	commission := float32(s.getMpesaWithdrawalCommission(int(tx.Amount)))
 
-	inviters, err := s.accountsApi.GetInviters(strconv.Itoa(int(mt.AccountId)))
+	inviters, err := s.accountsApi.GetInviters(strconv.Itoa(int(merchant.AccountId)))
 	if err != nil {
 		return err
 	}
@@ -827,24 +784,16 @@ func (s *service) computeMpesaWithdrawalCashback(mt *presenter.Merchant, tx *ent
 		}
 	}
 
-	account, err := s.accountsApi.GetAccountById(strconv.Itoa(int(mt.AccountId)))
-	if err != nil {
-		return err
-	}
-
 	go func() {
-		float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(mt.FloatAccountId)))
+		float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(merchant.FloatAccountId)))
 
 		date := tx.CreatedAt.Format("02/01/2006, 3:04 PM")
 
 		message := fmt.Sprintf("KES%v cash withdrawal by %s on %s was successful. "+
 			"New voucher balance KES%v. Commission earned KES%v. Commission saved KES%v",
 			payment.Amount, *tx.Destination, date, float.Balance, cashback, cashback*.2)
-		//message := fmt.Sprintf("KES%v Float for %s purchased successfully", payment.Amount, strings.Join(strings.Split(data.Store, " ")[0:4], " "))
-		//if payment.Status != "COMPLETED" {
-		//	message = fmt.Sprintf("Sorry, KES%v Float for %s could not be purchased", payment.Amount, tx.Destination)
-		//}
-		s.notifyApi.SendSMS("DEFAULT", account.Phone, message)
+
+		s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 	}()
 
 	// TODO: add go func with code to debit savings and send to save platform

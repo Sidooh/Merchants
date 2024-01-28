@@ -45,14 +45,15 @@ func (s *service) GetMerchantByIdNumber(idNumber string) (*presenter.Merchant, e
 }
 
 func (s *service) CreateMerchant(data *entities.Merchant) (merchant *entities.Merchant, err error) {
-	merchant, err = s.repository.CreateMerchant(data)
-
-	account, err := s.accountApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
+	account, err := s.accountApi.GetAccountById(strconv.Itoa(int(data.AccountId)))
 	if err != nil {
 		return nil, err
 	}
 
-	go s.notifyApi.SendSMS("DEFAULT", account.Phone, "KYC details created")
+	data.Phone = account.Phone
+	merchant, err = s.repository.CreateMerchant(data)
+
+	go s.notifyApi.SendSMS("DEFAULT", merchant.Phone, "KYC details created")
 
 	return
 }
@@ -90,12 +91,7 @@ func (s *service) UpdateMerchantKYB(data *entities.Merchant) (merchant *presente
 		return nil, err
 	}
 
-	account, err := s.accountApi.GetAccountById(strconv.Itoa(int(merchant.AccountId)))
-	if err != nil {
-		return nil, err
-	}
-
-	go s.notifyApi.SendSMS("DEFAULT", account.Phone, "KYB details updated")
+	go s.notifyApi.SendSMS("DEFAULT", merchant.Phone, "KYB details updated")
 
 	return
 }
