@@ -2,6 +2,8 @@ package transaction
 
 import (
 	"cmp"
+	"context"
+	"errors"
 	"fmt"
 	"merchants.sidooh/api/presenter"
 	"merchants.sidooh/pkg"
@@ -117,6 +119,9 @@ func (s *service) PurchaseMpesaFloat(data *entities.Transaction, agent, store, s
 	}
 	payment, err := s.paymentsApi.BuyMpesaFloat(merchant.AccountId, int(tx.Amount), agent, store, source, sourceAccount)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, err
+		}
 		// TODO: check on connect timeout and exclude from failed tx...
 		tx.Status = "FAILED"
 		tx, err := s.repository.UpdateTransaction(tx)
@@ -161,6 +166,9 @@ func (s *service) MpesaWithdrawal(data *entities.Transaction) (tx *entities.Tran
 
 	payment, err := s.paymentsApi.MpesaWithdraw(merchant.AccountId, merchant.FloatAccountId, int(tx.Amount), *tx.Destination)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, err
+		}
 		// TODO: check on connect timeout and exclude from failed tx...
 		tx.Status = "FAILED"
 		tx, err := s.repository.UpdateTransaction(tx)
@@ -205,6 +213,9 @@ func (s *service) FloatPurchase(data *entities.Transaction) (tx *entities.Transa
 
 	payment, err := s.paymentsApi.FloatPurchase(merchant.AccountId, merchant.FloatAccountId, int(tx.Amount), *tx.Destination)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, err
+		}
 		// TODO: check on connect timeout and exclude from failed tx...
 		tx.Status = "FAILED"
 		tx, err := s.repository.UpdateTransaction(tx)
@@ -259,6 +270,9 @@ func (s *service) FloatTransfer(data *entities.Transaction) (transaction *entiti
 
 	paymentData, err := s.paymentsApi.FloatTransfer(merchant.AccountId, merchant.FloatAccountId, int(transaction.Amount), strconv.Itoa(int(recipient.FloatAccountId)))
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, err
+		}
 		// TODO: check on connect timeout and exclude from failed tx...
 		transaction.Status = "FAILED"
 		transaction, err = s.repository.UpdateTransaction(transaction)
@@ -337,6 +351,9 @@ func (s *service) FloatWithdraw(data *entities.Transaction, destination, account
 
 	paymentData, err := s.paymentsApi.FloatWithdraw(merchant.AccountId, merchant.FloatAccountId, int(transaction.Amount), destination, account)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, err
+		}
 		// TODO: check on connect timeout and exclude from failed tx...
 		transaction.Status = "FAILED"
 		transaction, err = s.repository.UpdateTransaction(transaction)
