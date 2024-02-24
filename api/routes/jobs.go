@@ -9,4 +9,5 @@ import (
 func JobsRouter(app fiber.Router, service jobs.Service) {
 	app.Post("/jobs/invest-earnings", handlers.HandleEarningsInvestments(service))
 
+	app.Get("/jobs/query-payments-status", handlers.QueryPaymentsStatus(service))
 }

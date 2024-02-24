@@ -9,6 +9,7 @@ import (
 
 type Service interface {
 	FetchPayments() (*[]presenter.Payment, error)
+	GetPendingPayments() (*[]entities.Payment, error)
 	GetPayment(id uint) (*presenter.Payment, error)
 	CreatePayment(payment *entities.Payment) (*entities.Payment, error)
 	UpdatePayment(payment *entities.Payment) (*presenter.Payment, error)
@@ -27,6 +28,10 @@ func (s *service) FetchPayments() (*[]presenter.Payment, error) {
 
 func (s *service) GetPayment(id uint) (*presenter.Payment, error) {
 	return s.repository.ReadPayment(id)
+}
+
+func (s *service) GetPendingPayments() (*[]entities.Payment, error) {
+	return s.repository.ReadPaymentsWhere("status", "PENDING")
 }
 
 func (s *service) CreatePayment(payment *entities.Payment) (*entities.Payment, error) {

@@ -37,6 +37,14 @@ type FloatAccountTransactionsApiResponse struct {
 	Data *[]FloatAccountTransaction `json:"data"`
 }
 
+func (api *ApiClient) Find(paymentId string) (*utils.Payment, error) {
+	var apiResponse = new(utils.PaymentApiResponse)
+
+	err := api.NewRequest(http.MethodGet, "/payments/"+paymentId, nil).Send(apiResponse)
+
+	return apiResponse.Data, err
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // FLOAT ACCOUNTS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

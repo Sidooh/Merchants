@@ -10,6 +10,7 @@ import (
 type Repository interface {
 	CreatePayment(payment *entities.Payment) (*entities.Payment, error)
 	ReadPayments() (*[]presenter.Payment, error)
+	ReadPaymentsWhere(column string, value interface{}) (*[]entities.Payment, error)
 	ReadPayment(id uint) (*presenter.Payment, error)
 	ReadPaymentByColumn(column string, value interface{}) (*entities.Payment, error)
 	UpdatePayment(payment *entities.Payment) (*presenter.Payment, error)
@@ -31,14 +32,14 @@ func (r *repository) ReadPayments() (payments *[]presenter.Payment, err error) {
 	return
 }
 
-func (r *repository) ReadPayment(id uint) (*presenter.Payment, error) {
-	var payment presenter.Payment
-	result := datastore.DB.First(&payment, id)
-	if result.Error != nil {
-		return nil, result.Error
-	}
+func (r *repository) ReadPaymentsWhere(column string, value interface{}) (payments *[]entities.Payment, err error) {
+	err = datastore.DB.Where(column, value).Find(&payments).Error
+	return
+}
 
-	return &payment, nil
+func (r *repository) ReadPayment(id uint) (payment *presenter.Payment, err error) {
+	err = datastore.DB.First(&payment, id).Error
+	return
 }
 
 func (r *repository) ReadPaymentByColumn(column string, value interface{}) (payment *entities.Payment, err error) {
