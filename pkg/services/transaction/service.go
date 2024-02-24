@@ -89,7 +89,10 @@ func (s *service) GetTransaction(id uint) (results *presenter.Transaction, err e
 		Product:     tx.Product,
 		CreatedAt:   tx.CreatedAt,
 		UpdatedAt:   tx.UpdatedAt,
-		Payment: &presenter.Payment{
+	}
+
+	if tx.Payment != nil {
+		results.Payment = &presenter.Payment{
 			Id:            tx.Payment.Id,
 			Description:   tx.Payment.Description,
 			Destination:   tx.Payment.Destination,
@@ -97,7 +100,7 @@ func (s *service) GetTransaction(id uint) (results *presenter.Transaction, err e
 			Charge:        tx.Payment.Charge,
 			TransactionId: tx.Payment.TransactionId,
 			Status:        tx.Payment.Status,
-		},
+		}
 	}
 
 	return
