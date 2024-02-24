@@ -731,12 +731,14 @@ func (s *service) computeCashback(merchant *presenter.Merchant, tx *entities.Tra
 		s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 	}()
 
-	_, _ = s.mpesaStoreRepository.CreateStore(&entities.MpesaAgentStoreAccount{
-		Agent:      strings.Split(*tx.Destination, "-")[0],
-		Store:      strings.Split(*tx.Destination, "-")[1],
-		Name:       strings.Join(strings.Split(data.Store, " ")[0:4], " "),
-		MerchantId: merchant.Id,
-	})
+	go func() {
+		_, _ = s.mpesaStoreRepository.CreateStore(&entities.MpesaAgentStoreAccount{
+			Agent:      strings.Split(*tx.Destination, "-")[0],
+			Store:      strings.Split(*tx.Destination, "-")[1],
+			Name:       strings.Join(strings.Split(data.Store, " ")[0:4], " "),
+			MerchantId: merchant.Id,
+		})
+	}()
 
 	// TODO: add go func with code to debit savings and send to save platform
 	go s.earningService.SaveEarnings()
