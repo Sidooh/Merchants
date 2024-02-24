@@ -55,7 +55,7 @@ func (r *repository) ReadTransactions(filters Filters) (transactions *[]presente
 }
 
 func (r *repository) ReadTransaction(id uint) (transaction *entities.Transaction, err error) {
-	err = datastore.DB.First(&transaction, id).Error
+	err = datastore.DB.Joins("Payment").First(&transaction, id).Error
 	return
 }
 
