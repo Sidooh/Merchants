@@ -670,62 +670,74 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 	return err
 }
 
-func (s *service) computeCashback(merchant *presenter.Merchant, tx *entities.Transaction, payment *entities.Payment, data *utils.Payment) error {
+func (s *service) computeCashback(merchant *presenter.Merchant, tx *entities.Transaction, payment *entities.Payment, data *utils.Payment) (err error) {
 	// Compute cashback and commissions
 	// Compute cashback
 	//TODO Fix this for float purchase using mpesa
 	cashback := float32(30) * .2
-
-	s.earningRepository.CreateEarning(&entities.Earning{
-		Amount:        cashback,
-		Type:          "SELF",
-		TransactionId: tx.Id,
-		AccountId:     merchant.AccountId,
-	})
-
-	earningAcc, err := s.earningAccRepository.ReadAccountByAccountIdAndType(merchant.AccountId, "CASHBACK")
-	if err != nil {
-		earningAcc, err = s.earningAccRepository.CreateAccount(&entities.EarningAccount{
-			Type:      "CASHBACK",
-			AccountId: merchant.AccountId,
-		})
-		if err != nil {
-			return err
-		}
+	if payment.Charge == 0 {
+		cashback = 0
 	}
-	s.earningAccService.CreditAccount(earningAcc.Id, cashback)
-	s.earningAccService.DebitAccount(earningAcc.Id, cashback*.2) // Debit acc for savings
+
+	if cashback > 0 {
+
+		s.earningRepository.CreateEarning(&entities.Earning{
+			Amount:        cashback,
+			Type:          "SELF",
+			TransactionId: tx.Id,
+			AccountId:     merchant.AccountId,
+		})
+
+		earningAcc, err := s.earningAccRepository.ReadAccountByAccountIdAndType(merchant.AccountId, "CASHBACK")
+		if err != nil {
+			earningAcc, err = s.earningAccRepository.CreateAccount(&entities.EarningAccount{
+				Type:      "CASHBACK",
+				AccountId: merchant.AccountId,
+			})
+			if err != nil {
+				return err
+			}
+		}
+		s.earningAccService.CreditAccount(earningAcc.Id, cashback)
+		s.earningAccService.DebitAccount(earningAcc.Id, cashback*.2) // Debit acc for savings
+
+	}
 
 	// Compute commissions
 	//TODO Fix this for float purchase using mpesa
 	commission := float32(30) * .1
-
-	inviters, err := s.accountsApi.GetInviters(strconv.Itoa(int(merchant.AccountId)))
-	if err != nil {
-		return err
+	if payment.Charge == 0 {
+		commission = 0
 	}
 
-	if len(inviters) > 1 {
-		for _, inviter := range inviters[1:] {
-			s.earningRepository.CreateEarning(&entities.Earning{
-				Amount:        commission,
-				Type:          "INVITE",
-				TransactionId: tx.Id,
-				AccountId:     uint(inviter.Id),
-			})
+	if commission > 0 {
+		inviters, err := s.accountsApi.GetInviters(strconv.Itoa(int(merchant.AccountId)))
+		if err != nil {
+			return err
+		}
 
-			earningAcc, err := s.earningAccRepository.ReadAccountByAccountIdAndType(uint(inviter.Id), "COMMISSION")
-			if err != nil {
-				earningAcc, err = s.earningAccRepository.CreateAccount(&entities.EarningAccount{
-					Type:      "COMMISSION",
-					AccountId: uint(inviter.Id),
+		if len(inviters) > 1 {
+			for _, inviter := range inviters[1:] {
+				s.earningRepository.CreateEarning(&entities.Earning{
+					Amount:        commission,
+					Type:          "INVITE",
+					TransactionId: tx.Id,
+					AccountId:     uint(inviter.Id),
 				})
+
+				earningAcc, err := s.earningAccRepository.ReadAccountByAccountIdAndType(uint(inviter.Id), "COMMISSION")
 				if err != nil {
-					return err
+					earningAcc, err = s.earningAccRepository.CreateAccount(&entities.EarningAccount{
+						Type:      "COMMISSION",
+						AccountId: uint(inviter.Id),
+					})
+					if err != nil {
+						return err
+					}
 				}
+				s.earningAccService.CreditAccount(earningAcc.Id, commission)
+				s.earningAccService.DebitAccount(earningAcc.Id, commission*.2) // Debit acc for savings
 			}
-			s.earningAccService.CreditAccount(earningAcc.Id, commission)
-			s.earningAccService.DebitAccount(earningAcc.Id, commission*.2) // Debit acc for savings
 		}
 	}
 
@@ -755,7 +767,7 @@ func (s *service) computeCashback(merchant *presenter.Merchant, tx *entities.Tra
 	// TODO: add go func with code to debit savings and send to save platform
 	go s.earningService.SaveEarnings()
 
-	return err
+	return
 }
 
 func (s *service) computeMpesaWithdrawalCashback(merchant *presenter.Merchant, tx *entities.Transaction, payment *entities.Payment, data *utils.Payment) error {
