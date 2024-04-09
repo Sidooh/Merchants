@@ -761,6 +761,11 @@ func (s *service) computeCashback(merchant *presenter.Merchant, tx *entities.Tra
 	}()
 
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Println(err)
+			}
+		}()
 		_, _ = s.mpesaStoreRepository.CreateStore(&entities.MpesaAgentStoreAccount{
 			Agent:      strings.Split(*tx.Destination, "-")[0],
 			Store:      strings.Split(*tx.Destination, "-")[1],
