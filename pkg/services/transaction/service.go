@@ -744,13 +744,18 @@ func (s *service) computeCashback(merchant *presenter.Merchant, tx *entities.Tra
 	go func() {
 		date := tx.CreatedAt.Format("02/01/2006, 3:04 PM")
 
+		destination := *tx.Destination
+		if data.Store != "" && len(strings.Split(data.Store, " ")) != 1 {
+			destination = strings.Join(strings.Split(data.Store, " ")[0:4], " ")
+		}
+
 		message := fmt.Sprintf("You have purchased KES%v float for %s on %s using Voucher. Cost KES%v. "+
 			"You have received KES%v cashback.",
 			payment.Amount,
-			strings.Join(strings.Split(data.Store, " ")[0:4], " "), date, data.Charge, cashback)
+			destination, date, data.Charge, cashback)
 
 		if payment.Status != "COMPLETED" {
-			message = fmt.Sprintf("Sorry, KES%v Float for %s could not be purchased", payment.Amount, tx.Destination)
+			message = fmt.Sprintf("Sorry, KES%v Float for %s could not be purchased", payment.Amount, *tx.Destination)
 		}
 		s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 	}()
