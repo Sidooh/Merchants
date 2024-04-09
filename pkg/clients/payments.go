@@ -18,7 +18,7 @@ var paymentsCache cache.ICache[string, interface{}]
 func InitPaymentClient() {
 	apiUrl := viper.GetString("SIDOOH_PAYMENTS_API_URL")
 	paymentClient = New(apiUrl)
-	paymentClient.client = &http.Client{Timeout: 120 * time.Second}
+	paymentClient.client = &http.Client{Timeout: 600 * time.Second}
 
 	paymentsCache = cache.New[string, interface{}]()
 }
