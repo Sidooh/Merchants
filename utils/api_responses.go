@@ -10,13 +10,15 @@ type ApiResponse struct {
 }
 
 type Payment struct {
-	Id          uint           `json:"id"`
-	Amount      float32        `json:"amount,string"`
-	Charge      int            `json:"charge"`
-	Status      string         `json:"status"`
-	Destination datatypes.JSON `json:"destination"`
-	Description string         `json:"description"`
-	Store       string         `json:"store"`
+	Id           uint           `json:"id"`
+	Amount       float32        `json:"amount,string"`
+	Charge       int            `json:"charge"`
+	Status       string         `json:"status"`
+	Destination  datatypes.JSON `json:"destination"`
+	Description  string         `json:"description"`
+	Store        string         `json:"store"`
+	ErrorCode    int            `json:"error_code"`
+	ErrorMessage string         `json:"error_message"`
 }
 
 type PaymentApiResponse struct {

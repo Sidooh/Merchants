@@ -626,6 +626,12 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 				" KES%v float purchase for %s on %s. New voucher balance is KES%v.",
 				transaction.Amount, transaction.Amount, *transaction.Destination, date, float.Balance)
 
+			if ipn.ErrorCode != 0 {
+				message = fmt.Sprintf("Hi, we could not complete your"+
+					" KES%v float purchase for %s on %s. %s. Please try again later.",
+					transaction.Amount, *transaction.Destination, date, ipn.ErrorMessage)
+			}
+
 			s.notifyApi.SendSMS("ERROR", merchant.Phone, message)
 
 			transaction, err = s.UpdateTransaction(&entities.Transaction{
