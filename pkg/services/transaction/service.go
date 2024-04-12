@@ -621,15 +621,17 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 
 			float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(merchant.FloatAccountId)))
 
-			message := fmt.Sprintf("Hi, we have added KES%v to your voucher account "+
-				"because we could not complete your"+
-				" KES%v float purchase for %s on %s. New voucher balance is KES%v.",
-				transaction.Amount, transaction.Amount, *transaction.Destination, date, float.Balance)
+			message := ""
 
 			if ipn.ErrorCode != 0 {
 				message = fmt.Sprintf("Hi, we could not complete your"+
 					" KES%v float purchase for %s on %s. %s. Please try again later.",
 					transaction.Amount, *transaction.Destination, date, ipn.ErrorMessage)
+			} else {
+				message = fmt.Sprintf("Hi, we have added KES%v to your voucher account "+
+					"because we could not complete your"+
+					" KES%v float purchase for %s on %s. New voucher balance is KES%v.",
+					transaction.Amount, transaction.Amount, *transaction.Destination, date, float.Balance)
 			}
 
 			s.notifyApi.SendSMS("ERROR", merchant.Phone, message)
