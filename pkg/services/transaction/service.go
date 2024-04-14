@@ -131,6 +131,8 @@ func (s *service) PurchaseMpesaFloat(data *entities.Transaction, agent, store, s
 	}
 	payment, err := s.paymentsApi.BuyMpesaFloat(merchant.AccountId, int(tx.Amount), agent, store, source, sourceAccount)
 	if err != nil {
+		logger.ClientLog.Error("Error buying mpesa float", "tx", tx, "error", err)
+
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, err
 		}
@@ -140,8 +142,6 @@ func (s *service) PurchaseMpesaFloat(data *entities.Transaction, agent, store, s
 		if err != nil {
 			return nil, err
 		}
-
-		logger.ClientLog.Error("Error buying float", "tx", tx, "error", err)
 
 		go func() {
 			message := fmt.Sprintf("Sorry, KES%v Float could not be purchased", tx.Amount)

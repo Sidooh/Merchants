@@ -6,12 +6,17 @@ import (
 )
 
 type Service interface {
+	FetchAllStores() ([]*presenter.MpesaStore, error)
 	FetchStoresByMerchant(merchantId uint) (*[]presenter.MpesaAgentStoreAccount, error)
 	CreateStore(store *entities.MpesaAgentStoreAccount) (*entities.MpesaAgentStoreAccount, error)
 }
 
 type service struct {
 	repository Repository
+}
+
+func (s *service) FetchAllStores() ([]*presenter.MpesaStore, error) {
+	return s.repository.ReadAllStores()
 }
 
 func (s *service) FetchStoresByMerchant(merchantId uint) (*[]presenter.MpesaAgentStoreAccount, error) {

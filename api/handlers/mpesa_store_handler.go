@@ -8,6 +8,17 @@ import (
 	"net/http"
 )
 
+func GetMpesaStores(service mpesa_store.Service) fiber.Handler {
+	return func(ctx *fiber.Ctx) error {
+		fetched, err := service.FetchAllStores()
+		if err != nil {
+			return utils.HandleErrorResponse(ctx, err)
+		}
+
+		return utils.HandleSuccessResponse(ctx, fetched)
+	}
+}
+
 func GetMpesaStoresByMerchant(service mpesa_store.Service) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		id, err := ctx.ParamsInt("id")

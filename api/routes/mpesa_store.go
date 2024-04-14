@@ -8,4 +8,5 @@ import (
 
 func MpesaStoreRouter(app fiber.Router, service mpesa_store.Service) {
 	app.Get("merchants/:id/mpesa-store-accounts", handlers.GetMpesaStoresByMerchant(service))
+	app.Get("mpesa-store-accounts", handlers.GetMpesaStores(service))
 }

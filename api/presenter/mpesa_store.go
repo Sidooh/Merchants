@@ -6,3 +6,9 @@ type MpesaAgentStoreAccount struct {
 	Store string `json:"store"`
 	Name  string `json:"name"`
 }
+
+type MpesaStore struct {
+	Agent string `json:"agent"`
+	Store string `json:"store"`
+	Name  string `json:"name"`
+}

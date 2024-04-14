@@ -10,6 +10,7 @@ import (
 type Repository interface {
 	CreateStore(store *entities.MpesaAgentStoreAccount) (*entities.MpesaAgentStoreAccount, error)
 	ReadStoresByMerchant(merchantId uint) (*[]presenter.MpesaAgentStoreAccount, error)
+	ReadAllStores() ([]*presenter.MpesaStore, error)
 }
 type repository struct {
 }
@@ -25,6 +26,15 @@ func (r *repository) CreateStore(store *entities.MpesaAgentStoreAccount) (*entit
 
 func (r *repository) ReadStoresByMerchant(merchantId uint) (stores *[]presenter.MpesaAgentStoreAccount, err error) {
 	err = datastore.DB.Where("merchant_id", merchantId).Find(&stores).Error
+	return
+}
+
+func (r *repository) ReadAllStores() (stores []*presenter.MpesaStore, err error) {
+	err = datastore.DB.Model(entities.MpesaAgentStoreAccount{}).
+		Select("agent", "store", "name").
+		Distinct("agent", "store", "name").
+		Find(&stores).
+		Error
 	return
 }
 
