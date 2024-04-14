@@ -175,7 +175,7 @@ func FloatTopUp(service transaction.Service) fiber.Handler {
 
 		fetched, err := service.FloatPurchase(&entities.Transaction{
 			Amount:      float32(request.Amount),
-			Description: "Float Top Up",
+			Description: "Voucher Top Up",
 			Destination: &request.Phone,
 			MerchantId:  uint(id),
 			Product:     consts.FLOAT_PURCHASE,
@@ -203,7 +203,7 @@ func FloatTransfer(service transaction.Service) fiber.Handler {
 
 		fetched, err := service.FloatTransfer(&entities.Transaction{
 			Amount:      float32(request.Amount),
-			Description: "Float Transfer",
+			Description: "Voucher Transfer",
 			Destination: &request.Account,
 			MerchantId:  uint(id),
 			Product:     consts.FLOAT_TRANSFER,
@@ -231,7 +231,7 @@ func FloatWithdraw(service transaction.Service) fiber.Handler {
 
 		fetched, err := service.FloatWithdraw(&entities.Transaction{
 			Amount:      float32(request.Amount),
-			Description: "Float Withdraw",
+			Description: "Voucher Withdraw",
 			Destination: &request.Account,
 			MerchantId:  uint(id),
 			Product:     consts.FLOAT_WITHDRAW,
