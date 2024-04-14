@@ -231,7 +231,7 @@ func FloatWithdraw(service transaction.Service) fiber.Handler {
 
 		fetched, err := service.FloatWithdraw(&entities.Transaction{
 			Amount:      float32(request.Amount),
-			Description: "Voucher Withdraw",
+			Description: "Voucher Withdrawal",
 			Destination: &request.Account,
 			MerchantId:  uint(id),
 			Product:     consts.FLOAT_WITHDRAW,
