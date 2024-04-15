@@ -537,9 +537,17 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 
 			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
 
-			message := fmt.Sprintf("Hi, we could not complete the"+
-				" KES%v voucher purchase by %s on %s. Please try again later.",
-				transaction.Amount, *transaction.Destination, date)
+			message := ""
+
+			if ipn.ErrorCode != 0 {
+				message = fmt.Sprintf("Hi, we could not complete the"+
+					" KES%v voucher purchase for %s on %s. %s. Please try again later.",
+					transaction.Amount, *transaction.Destination, date, ipn.ErrorMessage)
+			} else {
+				message = fmt.Sprintf("Hi, we could not complete the"+
+					" KES%v voucher purchase by %s on %s. Please try again later.",
+					transaction.Amount, *transaction.Destination, date)
+			}
 
 			s.notifyApi.SendSMS("ERROR", merchant.Phone, message)
 
