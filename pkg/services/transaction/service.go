@@ -563,8 +563,8 @@ func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Paym
 			float, _ := s.paymentsApi.FetchFloatAccount(strconv.Itoa(int(merchant.FloatAccountId)))
 
 			date := transaction.CreatedAt.Format("02/01/2006, 3:04 PM")
-			message := fmt.Sprintf("Voucher purchase of KES%v for %s on %s was successful. Cost KES%v. New Voucher Balance is KES%v",
-				transaction.Amount, merchant.Phone, date, ipn.Charge, float.Balance)
+			message := fmt.Sprintf("Ksh%v has been added to your merchant voucher account on %s via Mpesa. New balance is Ksh%v",
+				transaction.Amount, date, float.Balance)
 
 			s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 		}()
