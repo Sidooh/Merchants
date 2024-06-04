@@ -715,7 +715,7 @@ func (s *service) computeCashback(merchant *presenter.Merchant, tx *entities.Tra
 			}
 		}
 		s.earningAccService.CreditAccount(earningAcc.Id, cashback)
-		s.earningAccService.DebitAccount(earningAcc.Id, cashback*.2) // Debit acc for savings
+		s.earningAccService.DebitAccount(earningAcc.Id, cashback*.8) // Debit acc for savings
 
 	}
 
@@ -752,7 +752,7 @@ func (s *service) computeCashback(merchant *presenter.Merchant, tx *entities.Tra
 					}
 				}
 				s.earningAccService.CreditAccount(earningAcc.Id, commission)
-				s.earningAccService.DebitAccount(earningAcc.Id, commission*.2) // Debit acc for savings
+				s.earningAccService.DebitAccount(earningAcc.Id, commission*.8) // Debit acc for savings
 			}
 		}
 	}

@@ -26,11 +26,11 @@ func (s *service) SaveEarnings() error {
 		inv.AccountId = earning.AccountId
 
 		if earning.Type == "SELF" {
-			inv.CashbackAmount += .2 * earning.Amount
+			inv.CashbackAmount += .8 * earning.Amount
 		}
 
 		if earning.Type == "INVITE" {
-			inv.CommissionAmount += .2 * earning.Amount
+			inv.CommissionAmount += .8 * earning.Amount
 		}
 
 		savings[earning.AccountId] = inv

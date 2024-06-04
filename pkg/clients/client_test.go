@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"regexp"
@@ -84,7 +84,7 @@ func authSuccessRequest(t *testing.T) RoundTripFunc {
 		return &http.Response{
 			StatusCode: 200,
 			// Send response to be tested
-			Body: ioutil.NopCloser(strings.NewReader(`{"access_token":"testToken"}`)),
+			Body: io.NopCloser(strings.NewReader(`{"access_token":"testToken"}`)),
 			// Must be set to non-nil value, or it panics
 			//Header: make(http.Header),
 		}
@@ -98,7 +98,7 @@ func authFailedRequest(t *testing.T) RoundTripFunc {
 		return &http.Response{
 			StatusCode: 401,
 			// Send response to be tested
-			Body: ioutil.NopCloser(strings.NewReader("{\"error\":\"unauthenticated\"}")),
+			Body: io.NopCloser(strings.NewReader("{\"error\":\"unauthenticated\"}")),
 			// Must be set to non-nil value or it panics
 			//Header: make(http.Header),
 		}
