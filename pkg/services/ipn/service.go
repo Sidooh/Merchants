@@ -19,7 +19,7 @@ import (
 
 type Service interface {
 	HandlePaymentIpn(data *utils.Payment) error
-	HandleSavingsIpn(data map[int]string) error
+	HandleSavingsIpn(data utils.SavingsIPN) error
 }
 
 type service struct {
@@ -63,47 +63,42 @@ func (s *service) HandlePaymentIpn(data *utils.Payment) error {
 
 }
 
-func (s *service) HandleSavingsIpn(data map[int]string) error {
+func (s *service) HandleSavingsIpn(data utils.SavingsIPN) error {
 
-	for id, res := range data {
-		go func() {
-			tx, err := s.savingsRepository.ReadTransactionByColumn("savings_id", id)
-			if err != nil {
-				log.Error(err)
-			}
+	tx, err := s.savingsRepository.ReadTransactionByColumn("savings_id", data.Id)
+	if err != nil {
+		log.Error(err)
+	}
 
-			if tx.Status == "PENDING" && (res == "COMPLETED" || res == "FAILED") {
-				tx, err = s.savingsRepository.UpdateTransaction(&entities.SavingsTransaction{
-					ModelID: entities.ModelID{Id: tx.Id},
-					Status:  res,
-				})
+	if tx.Status == "PENDING" && (data.Status == "COMPLETED" || data.Status == "FAILED") {
+		tx, err = s.savingsRepository.UpdateTransaction(&entities.SavingsTransaction{
+			ModelID: entities.ModelID{Id: tx.Id},
+			Status:  data.Status,
+		})
 
-				t, _ := s.transactionRepository.UpdateTransaction(&entities.Transaction{
-					ModelID: entities.ModelID{Id: tx.TransactionId},
-					Status:  res,
-				})
+		t, _ := s.transactionRepository.UpdateTransaction(&entities.Transaction{
+			ModelID: entities.ModelID{Id: tx.TransactionId},
+			Status:  data.Status,
+		})
 
-				merchant, _ := s.merchantRepository.ReadMerchant(t.MerchantId)
+		merchant, _ := s.merchantRepository.ReadMerchant(t.MerchantId)
 
-				// Send Notification
-				accType := strings.Split(t.Description, " - ")[1]
-				destination := *t.Destination
-				if strings.Split(*t.Destination, "-")[0] == "FLOAT" {
-					destination = "VOUCHER"
-				}
-				date := tx.CreatedAt.Format("02/01/2006, 3:04 PM")
+		// Send Notification
+		accType := strings.Split(t.Description, " - ")[1]
+		destination := *t.Destination
+		if strings.Split(*t.Destination, "-")[0] == "FLOAT" {
+			destination = "VOUCHER"
+		}
+		date := tx.CreatedAt.Format("02/01/2006, 3:04 PM")
 
-				message := fmt.Sprintf("Withdrawal of KES%v from savings %s to %s on %s was successful.",
-					tx.Amount, accType, destination, date)
-				if t.Status == "FAILED" {
-					message = fmt.Sprintf("Sorry, KES%v Withdrawal to %s could not be processed", t.Amount, destination)
-				}
+		message := fmt.Sprintf("Withdrawal of KES%v from savings %s to %s on %s was successful.",
+			tx.Amount, accType, destination, date)
+		if t.Status == "FAILED" {
+			message = fmt.Sprintf("Sorry, KES%v Withdrawal to %s could not be processed", t.Amount, destination)
+		}
 
-				s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
+		s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
 
-			}
-
-		}()
 	}
 
 	return nil

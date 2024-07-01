@@ -571,7 +571,7 @@ func (s *service) WithdrawSavings(data *entities.Transaction, source, destinatio
 		return nil, err
 	}
 
-	savingsTx, err := s.savingsRepository.CreateSavingsTransaction(&entities.SavingsTransaction{
+	_, err = s.savingsRepository.CreateSavingsTransaction(&entities.SavingsTransaction{
 		Type:              withdrawalData.Type,
 		Amount:            float32(withdrawalData.Amount),
 		Status:            withdrawalData.Status,
@@ -584,8 +584,6 @@ func (s *service) WithdrawSavings(data *entities.Transaction, source, destinatio
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println(savingsTx)
 
 	//if withdrawalData.Status == "COMPLETED" {
 	//	err = s.CompleteTransaction(payment, paymentData)

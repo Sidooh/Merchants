@@ -38,6 +38,6 @@ type ChargesApiResponse struct {
 }
 
 type SavingsIPN struct {
-	ApiResponse
-	Data map[int]string `json:"data"`
+	Id     int    `json:"id,string"`
+	Status string `json:"status"`
 }

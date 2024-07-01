@@ -34,7 +34,7 @@ func HandleSavingsIpn(service ipn.Service) fiber.Handler {
 			return ctx.Status(http.StatusUnprocessableEntity).JSON(err)
 		}
 
-		err := service.HandleSavingsIpn(request.Data)
+		err := service.HandleSavingsIpn(request)
 		if err != nil {
 			return utils.HandleErrorResponse(ctx, err)
 		}
