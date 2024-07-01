@@ -15,6 +15,7 @@ import (
 	"merchants.sidooh/pkg/services/merchant"
 	"merchants.sidooh/pkg/services/mpesa_store"
 	"merchants.sidooh/pkg/services/payment"
+	"merchants.sidooh/pkg/services/savings"
 	"merchants.sidooh/utils"
 	"merchants.sidooh/utils/consts"
 	"slices"
@@ -35,6 +36,8 @@ type Service interface {
 	FloatWithdraw(transaction *entities.Transaction, destination, account string) (*entities.Transaction, error)
 	WithdrawEarnings(transaction *entities.Transaction, source, destination, account string) (*entities.Transaction, error)
 
+	WithdrawSavings(transaction *entities.Transaction, source, destination, account string) (*entities.Transaction, error)
+
 	CompleteTransaction(payment *entities.Payment, ipn *utils.Payment) error
 }
 
@@ -43,6 +46,7 @@ type service struct {
 
 	merchantRepository   merchant.Repository
 	paymentRepository    payment.Repository
+	savingsRepository    savings.Repository
 	earningAccRepository earning_account.Repository
 	earningRepository    earning.Repository
 	mpesaStoreRepository mpesa_store.Repository
@@ -52,6 +56,7 @@ type service struct {
 
 	accountsApi *clients.ApiClient
 	paymentsApi *clients.ApiClient
+	savingsApi  *clients.ApiClient
 	notifyApi   *clients.ApiClient
 }
 
@@ -520,6 +525,77 @@ func (s *service) WithdrawEarnings(data *entities.Transaction, source, destinati
 	return
 }
 
+func (s *service) WithdrawSavings(data *entities.Transaction, source, destination, account string) (tx *entities.Transaction, err error) {
+	merchant, err := s.merchantRepository.ReadMerchant(data.MerchantId)
+	if err != nil {
+		return nil, err
+	}
+
+	if destination == "FLOAT" {
+		return nil, pkg.ErrUnauthorized
+	}
+
+	personalAccounts, err := s.savingsApi.GetPersonalAccounts(strconv.Itoa(int(merchant.AccountId)))
+	if err != nil {
+		return nil, err
+	}
+	if len(personalAccounts) == 0 {
+		return nil, pkg.ErrInvalidAccount
+	}
+
+	var personalAcc *clients.PersonalAccount
+	for _, personalAccount := range personalAccounts {
+		if personalAccount.Type == "MERCHANT_"+source {
+			personalAcc = &personalAccount
+			break
+		}
+	}
+	if personalAcc == nil {
+		return nil, pkg.ErrInvalidAccount
+	}
+	if personalAcc.Balance <= float64(data.Amount) {
+		return nil, pkg.ErrInsufficientBalance
+	}
+
+	tx, err = s.repository.CreateTransaction(data)
+	if err != nil {
+		return nil, err
+	}
+
+	withdrawalData, err := s.savingsApi.WithdrawSavings(personalAcc.Id, destination, account, strconv.Itoa(int(tx.Id)), int(data.Amount))
+	if err != nil {
+
+		tx.Status = "FAILED"
+		_, err := s.repository.UpdateTransaction(tx)
+
+		return nil, err
+	}
+
+	savingsTx, err := s.savingsRepository.CreateSavingsTransaction(&entities.SavingsTransaction{
+		Type:              withdrawalData.Type,
+		Amount:            float32(withdrawalData.Amount),
+		Status:            withdrawalData.Status,
+		Description:       withdrawalData.Description,
+		Extra:             withdrawalData.Extra,
+		TransactionId:     tx.Id,
+		SavingsId:         withdrawalData.Id,
+		PersonalAccountId: withdrawalData.PersonalAccountId,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(savingsTx)
+
+	//if withdrawalData.Status == "COMPLETED" {
+	//	err = s.CompleteTransaction(payment, paymentData)
+	//
+	//	return nil, err
+	//}
+
+	return
+}
+
 func (s *service) CompleteTransaction(payment *entities.Payment, ipn *utils.Payment) error {
 	payment.Status = ipn.Status
 	updatedPayment, err := s.paymentRepository.UpdatePayment(payment)
@@ -916,12 +992,13 @@ func (s *service) getMpesaWithdrawalCommission(amount int) int {
 	return 0
 }
 
-func NewService(r Repository, merchantRepo merchant.Repository, paymentRepo payment.Repository, earningAccRepo earning_account.Repository, earningRepo earning.Repository, mpesaStoreRepo mpesa_store.Repository, earningAccSrv earning_account.Service, earningSrv earning.Service) Service {
+func NewService(r Repository, merchantRepo merchant.Repository, paymentRepo payment.Repository, savingsRepo savings.Repository, earningAccRepo earning_account.Repository, earningRepo earning.Repository, mpesaStoreRepo mpesa_store.Repository, earningAccSrv earning_account.Service, earningSrv earning.Service) Service {
 	return &service{
 		repository: r,
 
 		merchantRepository:   merchantRepo,
 		paymentRepository:    paymentRepo,
+		savingsRepository:    savingsRepo,
 		earningAccRepository: earningAccRepo,
 		earningRepository:    earningRepo,
 		mpesaStoreRepository: mpesaStoreRepo,
@@ -931,6 +1008,7 @@ func NewService(r Repository, merchantRepo merchant.Repository, paymentRepo paym
 
 		accountsApi: clients.GetAccountClient(),
 		paymentsApi: clients.GetPaymentClient(),
+		savingsApi:  clients.GetSavingsClient(),
 		notifyApi:   clients.GetNotifyClient(),
 	}
 }

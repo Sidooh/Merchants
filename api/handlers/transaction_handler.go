@@ -273,3 +273,33 @@ func WithdrawEarnings(service transaction.Service) fiber.Handler {
 		return utils.HandleSuccessResponse(ctx, fetched)
 	}
 }
+
+func WithdrawSavings(service transaction.Service) fiber.Handler {
+	return func(ctx *fiber.Ctx) error {
+		var request EarningsWithdrawalRequest
+		if err := middleware.BindAndValidateRequest(ctx, &request); err != nil {
+			return ctx.Status(http.StatusUnprocessableEntity).JSON(err)
+		}
+
+		id, err := ctx.ParamsInt("merchantId")
+		if err != nil {
+			ctx.Status(http.StatusBadRequest)
+			return ctx.JSON(utils.ValidationErrorResponse(errors.New("invalid merchant id parameter")))
+		}
+
+		dest := fmt.Sprintf("%v-%v", request.Destination, request.Account)
+
+		fetched, err := service.WithdrawSavings(&entities.Transaction{
+			Amount:      float32(request.Amount),
+			Description: "Savings Withdrawal - " + request.Source,
+			Destination: &dest,
+			MerchantId:  uint(id),
+			Product:     consts.SAVINGS_WITHDRAW,
+		}, request.Source, request.Destination, request.Account)
+		if err != nil {
+			return utils.HandleErrorResponse(ctx, err)
+		}
+
+		return utils.HandleSuccessResponse(ctx, fetched)
+	}
+}

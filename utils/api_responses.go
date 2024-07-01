@@ -36,3 +36,8 @@ type ChargesApiResponse struct {
 	ApiResponse
 	Data *[]AmountCharge `json:"data"`
 }
+
+type SavingsIPN struct {
+	ApiResponse
+	Data map[int]string `json:"data"`
+}

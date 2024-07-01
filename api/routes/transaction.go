@@ -17,6 +17,6 @@ func TransactionRouter(app fiber.Router, service transaction.Service) {
 	app.Post("/merchants/:merchantId/buy-mpesa-float", handlers.MpesaFloat(service))
 	app.Post("/merchants/:merchantId/mpesa-withdraw", handlers.MpesaWithdrawal(service))
 	app.Post("/merchants/:merchantId/earnings/withdraw", handlers.WithdrawEarnings(service))
+	app.Post("/merchants/:merchantId/savings/withdraw", handlers.WithdrawSavings(service))
 
-	//app.Post("/payments/ipn", handlers.BuyFloat(service))
 }

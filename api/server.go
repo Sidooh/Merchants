@@ -26,6 +26,7 @@ import (
 	"merchants.sidooh/pkg/services/merchant"
 	"merchants.sidooh/pkg/services/mpesa_store"
 	"merchants.sidooh/pkg/services/payment"
+	"merchants.sidooh/pkg/services/savings"
 	"merchants.sidooh/pkg/services/transaction"
 	"merchants.sidooh/utils"
 	"time"
@@ -88,6 +89,9 @@ func setHandlers(app *fiber.App) {
 	paymentRep := payment.NewRepo()
 	paymentSrv := payment.NewService(paymentRep, merchantRep)
 
+	savingsRep := savings.NewRepo()
+	//savingsSrv := savings.NewService(savingsRep, merchantRep)
+
 	earningRep := earning.NewRepo()
 	earningSrv := earning.NewService(earningRep)
 
@@ -100,9 +104,9 @@ func setHandlers(app *fiber.App) {
 	mpesaStoreSrv := mpesa_store.NewService(mpesaStoreRep)
 
 	transactionRep := transaction.NewRepo()
-	transactionSrv := transaction.NewService(transactionRep, merchantRep, paymentRep, earningAccRep, earningRep, mpesaStoreRep, earningAccSrv, earningSrv)
+	transactionSrv := transaction.NewService(transactionRep, merchantRep, paymentRep, savingsRep, earningAccRep, earningRep, mpesaStoreRep, earningAccSrv, earningSrv)
 
-	ipnSrv := ipn.NewService(paymentRep, transactionRep, merchantRep, mpesaStoreRep, earningAccRep, earningRep, transactionSrv, earningAccSrv, earningSrv)
+	ipnSrv := ipn.NewService(paymentRep, savingsRep, transactionRep, merchantRep, mpesaStoreRep, earningAccRep, earningRep, transactionSrv, earningAccSrv, earningSrv)
 	jobsSrv := jobs.NewService(earningSrv, paymentSrv, transactionSrv)
 
 	routes.IpnRouter(v1, ipnSrv)

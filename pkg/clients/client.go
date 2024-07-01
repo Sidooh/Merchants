@@ -86,7 +86,7 @@ func (api *ApiClient) Send(data interface{}) error {
 
 	//TODO: Perform error handling in a better way
 	if response.StatusCode != 200 && response.StatusCode != 201 && response.StatusCode != 202 && response.StatusCode != 401 &&
-		response.StatusCode != 404 && response.StatusCode != 422 {
+		response.StatusCode != 404 {
 		if response.StatusCode < 500 {
 			var errorMessage map[string][]map[string]string
 			err = json.Unmarshal(body, &errorMessage)
