@@ -38,6 +38,8 @@ type ChargesApiResponse struct {
 }
 
 type SavingsIPN struct {
-	Id     int    `json:"id,string"`
-	Status string `json:"status"`
+	Id      int     `json:"id,string"`
+	Status  string  `json:"status"`
+	Charge  int     `json:"charge,string"`
+	Balance float32 `json:"balance,string"`
 }

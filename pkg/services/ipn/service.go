@@ -91,10 +91,10 @@ func (s *service) HandleSavingsIpn(data utils.SavingsIPN) error {
 		}
 		date := tx.CreatedAt.Format("02/01/2006, 3:04 PM")
 
-		message := fmt.Sprintf("Withdrawal of KES%v from savings %s to %s on %s was successful.",
-			tx.Amount, accType, destination, date)
+		message := fmt.Sprintf("Withdrawal of KES%v from Locked Savings %s to %s on %s was successful. Cost KES%v. New balance is KES%v",
+			tx.Amount, accType, destination, date, data.Charge, data.Balance)
 		if t.Status == "FAILED" {
-			message = fmt.Sprintf("Sorry, KES%v Withdrawal to %s could not be processed", t.Amount, destination)
+			message = fmt.Sprintf("Sorry, KES%v Locked Savings withdrawal to %s could not be processed", t.Amount, destination)
 		}
 
 		s.notifyApi.SendSMS("DEFAULT", merchant.Phone, message)
