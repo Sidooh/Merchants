@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/go-playground/validator v9.31.0+incompatible
-	github.com/gofiber/fiber/v2 v2.52.0
+	github.com/gofiber/fiber/v2 v2.52.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/jellydator/ttlcache/v3 v3.1.1
 	github.com/json-iterator/go v1.1.12
